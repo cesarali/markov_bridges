@@ -5,8 +5,32 @@ from conditional_rate_matching import data_path
 
 image_data_path = os.path.join(data_path,"raw")
 
+
 @dataclass
-class CategoricalDataloaderConfig:
+class MarkovBridgeDataConfig:
+    # variables model
+    context_discrete: bool = False    
+    context_continuous: bool = False
+
+    target_discrete: bool = True
+    target_continuous: bool = False
+
+    source_discrete: str = "uniform"
+    source_continuous: str = None
+
+    #names and dimensions
+    name:str = "MarkovBridgeData"
+    dataset_name:str = "tensors" 
+
+    dimensions: int = 256
+    vocab_size: int = 129
+    context_dimension:int = 0
+    
+    max_training_size: int = None
+    max_test_size:int = None
+
+@dataclass
+class CategoricalDataloaderConfig(MarkovBridgeDataConfig):
     name:str = "CategoricalDataloader"
     dataset_name:str = "categorical_dirichlet" # categorical_dirichlet
     data_dir:str = image_data_path

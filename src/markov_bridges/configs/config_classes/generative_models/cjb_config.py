@@ -26,14 +26,9 @@ from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs impo
 )
 
 from markov_bridges.configs.config_classes.trainers.trainer_config import BasicTrainerConfig
+from markov_bridges.configs.config_classes.data.basics_configs import AbstractDataloaderConfig
 
-data_configs = {"NISTLoader":NISTLoaderConfig,
-                "DistortedNISTLoader":DistortedNISTLoaderConfig,
-                "LakhPianoRoll":LakhPianoRollConfig,
-                "GraphDataloader":GraphDataloaderConfig,
-                "BridgeConfig":BridgeConfig,
-                "StatesDataloader":StatesDataloaderConfig,
-                "GrayCodesDataloader":GrayCodesDataloaderConfig}
+data_configs = {"AbstractDataloaderConfig":AbstractDataloaderConfig}
 
 
 temporal_network_configs = {
@@ -103,9 +98,8 @@ class TemporalNetworkToRateConfig:
 @dataclass
 class CJBConfig:
     # data
-    data0: Union[LakhPianoRollConfig,StatesDataloaderConfig] = StatesDataloaderConfig()
-    data1: Union[LakhPianoRollConfig,NISTLoaderConfig] = NISTLoaderConfig()
-    # process
+    data:AbstractDataloaderConfig = None
+    # process 
     thermostat : Union[ConstantThermostatConfig, LogThermostatConfig] = ConstantThermostatConfig()
     # temporal_to_rate
     temporal_network_to_rate : Union[int,float,TemporalNetworkToRateConfig] = None

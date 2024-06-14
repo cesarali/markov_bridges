@@ -105,8 +105,11 @@ class CJBPipeline:
 
                 # Slice the data into a batch
                 x_0_batch = x_0[:batch_size]
-                x_f_batch, x_hist_batch, x0_hist_batch, ts = TauLeaping(self.config, self.model, x_0_batch,
-                                                                              forward=True, return_path=return_path)
+                x_f_batch, x_hist_batch, x0_hist_batch, ts = TauLeaping(self.config, 
+                                                                        self.model, 
+                                                                        x_0_batch,
+                                                                        forward=True, 
+                                                                        return_path=return_path)
 
                 # Append the results from the batch
                 x_f_batches.append(x_f_batch)

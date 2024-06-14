@@ -51,7 +51,6 @@ def TauLeaping(config:Union[DSBConfig,CTDDConfig,CRMConfig],
     S = config.data0.vocab_size
     num_steps = config.pipeline.number_of_steps
     time_epsilon = config.pipeline.time_epsilon
-    set_diagonal = config.pipeline.set_diagonal
     min_t = 1./num_steps
     device = x_0.device
 
