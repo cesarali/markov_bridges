@@ -7,14 +7,17 @@ from torch.utils.data import DataLoader
 from typing import Union
 from dataclasses import asdict
 
-from markov_bridges.utils.experiment_files import ExperimentFiles
 import numpy as np
 from torch.nn.functional import softmax
+from markov_bridges.utils.experiment_files import ExperimentFiles
 
-from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
-from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
 from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
+from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
 from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+from markov_bridges.data.utils import get_dataloaders
+from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
 @dataclass
 class CJB:
@@ -22,9 +25,7 @@ class CJB:
     experiment_dir:str = None
 
     experiment_files: ExperimentFiles = None
-    dataloader_0: Union[DataLoader] = None
-    dataloader_1: Union[DataLoader] = None
-    parent_dataloder: LankhPianoRollDataloader =None
+    dataloader: Union[MarkovBridgeDataloader] = None
     forward_rate: Union[ClassificationForwardRate] = None
     op_sampler: OTPlanSampler = None
     pipeline:CJBPipeline = None
@@ -33,19 +34,16 @@ class CJB:
 
     def __post_init__(self):
         self.loss = nn.CrossEntropyLoss(reduction='none')
-        if self.dataloader_0 is not None:
-            self.pipeline = CJBPipeline(self.config, self.forward_rate, self.dataloader_0, self.dataloader_1)
-        else:
-            if self.experiment_dir is not None:
-                self.load_from_experiment(self.experiment_dir,self.device,self.image_data_path)
-            elif self.config is not None:
-                self.initialize_from_config(config=self.config,device=self.device)
+        if self.experiment_dir is not None:
+            self.load_from_experiment(self.experiment_dir,self.device,self.image_data_path)
+        elif self.config is not None:
+            self.initialize_from_config(config=self.config,device=self.device)
 
     def initialize_from_config(self,config,device):
         # =====================================================
         # DATA STUFF
         # =====================================================
-        self.dataloader_0,self.dataloader_1,self.parent_dataloader = get_dataloaders_crm(config)
+        self.dataloader = get_dataloaders(config)
         # =========================================================
         # Initialize
         # =========================================================
@@ -55,13 +53,14 @@ class CJB:
             self.device = device
 
         self.forward_rate = ClassificationForwardRate(self.config, self.device).to(self.device)
-        self.pipeline = CRMPipeline(self.config, self.forward_rate, self.dataloader_0, self.dataloader_1,self.parent_dataloader)
+        self.pipeline = CJBPipeline(self.config,self.forward_rate,self.dataloader)
+
         if self.config.optimal_transport.cost == "log":
             B = self.forward_rate.log_cost_regularizer()
             B = B.item() if isinstance(B,torch.Tensor) else B
             self.config.optimal_transport.method = "sinkhorn"
             self.config.optimal_transport.normalize_cost = True
-            self.config.optimal_transport.normalize_cost_constant = float(self.config.data1.dimensions)
+            self.config.optimal_transport.normalize_cost_constant = float(self.config.data.dimensions)
             reg = 1./B
             print("OT regularizer for Schrodinger Plan {0}".format(reg))
             self.config.optimal_transport.reg = reg
@@ -71,11 +70,9 @@ class CJB:
     def load_from_experiment(self,experiment_dir,device=None,set_data_path=None):
         self.experiment_files = ExperimentFiles(experiment_dir=experiment_dir)
         results_ = self.experiment_files.load_results()
-
-        
         self.forward_rate = results_["model"]
-
         config_path_json = json.load(open(self.experiment_files.config_path, "r"))
+
         if hasattr(config_path_json,"delete"):
             config_path_json["delete"] = False
         self.config = CJBConfig(**config_path_json)
@@ -88,7 +85,7 @@ class CJB:
             self.device = device
 
         self.forward_rate.to(self.device)
-        self.dataloader_0, self.dataloader_1,self.parent_dataloader = get_dataloaders_crm(self.config)
+        self.dataloader_0, self.dataloader_1,self.parent_dataloader = get_dataloaders(self.config)
 
         self.pipeline = CJBPipeline(self.config, self.forward_rate, self.dataloader_0, self.dataloader_1,self.parent_dataloader)
         self.op_sampler = OTPlanSampler(**asdict(self.config.optimal_transport))
@@ -108,17 +105,13 @@ class CJB:
     def align_configs(self):
         pass
 
-    def sample_pair(self,batch_1, batch_0,device:torch.device,seed=None):
-        x1,x0 = uniform_pair_x0_x1(batch_1, batch_0, device=torch.device("cpu"))
-        x1 = x1.float()
-        x0 = x0.float()
+    def sample_pair(self,databatch,seed=None):
+        """
+        data is returned with shape [batch_size,dimension]
+        """
+        x1,x0 = uniform_pair_x0_x1(databatch)
 
-        batch_size = x0.shape[0]
-        x0 = x0.reshape(batch_size,-1)
-        x1 = x1.reshape(batch_size,-1)
-        
         if self.config.optimal_transport.name == "OTPlanSampler":
-
             cost=None
             if self.config.optimal_transport.cost == "log":
                 with torch.no_grad():
@@ -126,15 +119,15 @@ class CJB:
 
             if seed is not None:
                 torch.manual_seed(seed)
-                np.random.seed(seed)
-                
+                np.random.seed(seed)        
             x0, x1 = self.op_sampler.sample_plan(x0, x1, replace=False,cost=cost)
 
         x0 = x0.to(self.device)
         x1 = x1.to(self.device)
+
         return x1,x0
 
-def uniform_pair_x0_x1(batch_1, batch_0,device=torch.device("cpu")):
+def uniform_pair_x0_x1(databatch:MarkovBridgeDataNameTuple):
     """
     Most simple Z sampler
 
@@ -143,15 +136,22 @@ def uniform_pair_x0_x1(batch_1, batch_0,device=torch.device("cpu")):
 
     :return:x_1, x_0
     """
-    x_0 = batch_0[0]
-    x_1 = batch_1[0]
+    x_0 = databatch.source_discrete
+    x_1 =  databatch.target_discrete
 
     batch_size_0 = x_0.size(0)
     batch_size_1 = x_1.size(0)
 
     batch_size = min(batch_size_0, batch_size_1)
 
-    x_0 = x_0[:batch_size, :]
-    x_1 = x_1[:batch_size, :]
+    x_0 = x_0[:batch_size]
+    x_1 = x_1[:batch_size]
+
+    x_1 = x_1.float()
+    x_0 = x_0.float()
+    
+    batch_size = x_0.shape[0]
+    x_0 = x_0.reshape(batch_size,-1)
+    x_1 = x_1.reshape(batch_size,-1)
 
     return x_1, x_0

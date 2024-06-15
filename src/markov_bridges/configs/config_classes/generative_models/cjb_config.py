@@ -10,10 +10,6 @@ from markov_bridges import data_path
 from markov_bridges.configs.config_classes.networks.temporal_networks_config import (
     TemporalMLPConfig,
     TemporalDeepMLPConfig,
-    TemporalGraphConvNetConfig,
-    ConvNetAutoencoderConfig,
-    DiffusersUnet2DConfig,
-    TemporalScoreNetworkAConfig,
     SequenceTransformerConfig,
     SimpleTemporalGCNConfig
 )
@@ -26,19 +22,16 @@ from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs impo
 )
 
 from markov_bridges.configs.config_classes.trainers.trainer_config import BasicTrainerConfig
-from markov_bridges.configs.config_classes.data.basics_configs import AbstractDataloaderConfig
+from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
 
-data_configs = {"AbstractDataloaderConfig":AbstractDataloaderConfig}
+image_data_path = os.path.join(data_path,"raw")
 
+data_configs = {"LakhPianoRoll":LakhPianoRollConfig}
 
 temporal_network_configs = {
     "TemporalMLP":TemporalMLPConfig,
-    "ConvNetAutoencoder":ConvNetAutoencoderConfig,
     "SequenceTransformer":SequenceTransformerConfig,
     "TemporalDeepMLP":TemporalDeepMLPConfig,
-    "TemporalGraphConvNet":TemporalGraphConvNetConfig,
-    "TemporalScoreNetworkA":TemporalScoreNetworkAConfig,
-    "DiffusersUnet2D":DiffusersUnet2DConfig,
     "SimpleTemporalGCN":SimpleTemporalGCNConfig
 }
 
@@ -48,8 +41,6 @@ thermostat_configs = {
     "ExponentialThermostat":ExponentialThermostatConfig,
     "InvertedExponentialThermostat":InvertedExponentialThermostatConfig
 }
-
-image_data_path = os.path.join(data_path,"raw")
 
 @dataclass
 class CJBTrainerConfig(BasicTrainerConfig):
@@ -98,16 +89,13 @@ class TemporalNetworkToRateConfig:
 @dataclass
 class CJBConfig:
     # data
-    data:AbstractDataloaderConfig = None
+    data: Union[LakhPianoRollConfig] = None
     # process 
     thermostat : Union[ConstantThermostatConfig, LogThermostatConfig] = ConstantThermostatConfig()
     # temporal_to_rate
     temporal_network_to_rate : Union[int,float,TemporalNetworkToRateConfig] = None
     # temporal network
     temporal_network: Union[TemporalMLPConfig,
-                            ConvNetAutoencoderConfig,
-                            DiffusersUnet2DConfig,
-                            TemporalScoreNetworkAConfig,
                             SequenceTransformerConfig,
                             SimpleTemporalGCNConfig] = TemporalMLPConfig()
     # ot
@@ -118,11 +106,8 @@ class CJBConfig:
     pipeline : BasicPipelineConfig = BasicPipelineConfig()
 
     def __post_init__(self):
-        if isinstance(self.data0,dict):
-            self.data0 = data_configs[self.data0["name"]](**self.data0)
-
-        if isinstance(self.data1,dict):
-            self.data1 = data_configs[self.data1["name"]](**self.data1)
+        if isinstance(self.data,dict):
+            self.data = data_configs[self.data["name"]](**self.data)
 
         if isinstance(self.temporal_network,dict):
             self.temporal_network = temporal_network_configs[self.temporal_network["name"]](**self.temporal_network)

@@ -9,14 +9,14 @@ image_data_path = os.path.join(data_path,"raw")
 @dataclass
 class MarkovBridgeDataConfig:
     # variables model
-    context_discrete: bool = False    
-    context_continuous: bool = False
+    has_context_discrete: bool = False    
+    has_context_continuous: bool = False
 
-    target_discrete: bool = True
-    target_continuous: bool = False
+    has_target_discrete: bool = True
+    has_target_continuous: bool = False
 
-    source_discrete: str = "uniform"
-    source_continuous: str = None
+    source_discrete_type: str = "uniform"
+    source_continuous_type: str = None
 
     #names and dimensions
     name:str = "MarkovBridgeData"

@@ -4,33 +4,14 @@ import numpy as np
 from torch.distributions import Categorical
 from torch.utils.data import TensorDataset,DataLoader
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
-
 from markov_bridges.configs.config_classes.data.basics_configs import MarkovBridgeDataConfig
 
 from markov_bridges.data.abstract_dataloader import (
     MarkovBridgeDataloader,
     MarkovBridgeDataClass,
-    MarkovBridgeDataset
+    MarkovBridgeDataset,
+    MarkovBridgeDataNameTuple
 )
-
-def get_data(config:LakhPianoRollConfig):
-    data_path = config.data_dir
-    train_datafile = os.path.join(data_path , "pianoroll_dataset", "train.npy")
-    test_datafile = os.path.join(data_path, "pianoroll_dataset", "test.npy")
-    train_data = np.load(train_datafile)
-    test_data = np.load(test_datafile)
-
-    if config.max_training_size is not None:
-        train_data = train_data[:min(config.max_training_size, len(train_data))]
-
-    if config.max_test_size is not None:
-        test_data = test_data[:min(config.max_test_size, len(test_data))]
-
-    descramble_datafile = os.path.join(data_path, "pianoroll_dataset", "descramble_key.txt")
-    descramble_key = np.loadtxt(descramble_datafile)
-
-    return torch.Tensor(train_data),torch.Tensor(test_data),descramble_key
-
 
 class LankhPianoRollDataloader(MarkovBridgeDataloader):
     """
@@ -46,6 +27,7 @@ class LankhPianoRollDataloader(MarkovBridgeDataloader):
         self.music_config = music_config
         self.number_of_spins = self.music_config.dimensions
         self.get_dataloaders()
+        self.define_functions()
 
     def get_dataloaders(self):
         train_data,test_data,descramble_key = self.get_target_data(self.music_config)
@@ -84,7 +66,7 @@ class LankhPianoRollDataloader(MarkovBridgeDataloader):
     def get_source_data(self,dataset,data_config:MarkovBridgeDataConfig):
         dataset_size = dataset.size(0)
         generation_dimension = data_config.dimensions - data_config.context_dimension
-        if data_config.source_discrete == "uniform":
+        if data_config.source_discrete_type == "uniform":
             vocab_size = data_config.vocab_size
             NoiseDistribution = Categorical(torch.full((vocab_size,),1./vocab_size))
             noise_sample = NoiseDistribution.sample((dataset_size,generation_dimension))
@@ -113,12 +95,17 @@ class LankhPianoRollDataloader(MarkovBridgeDataloader):
 
     def descramble(self,samples):
         return self.descramble_key[samples.flatten().astype(int)].reshape(*samples.shape)
-
+    
+    def define_functions(self):
+        context_dimension = self.music_config.context_dimension
+        self.join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
+        self.remove_context = lambda full_data_discrete : full_data_discrete[:,context_dimension:]
 
 if __name__=="__main__":
 
     music_config = LakhPianoRollConfig()
     music_dataloader = LankhPianoRollDataloader(music_config)
-
-    databatch  = next(music_dataloader.train_dataloader.__iter__())
-    print(databatch.context_discrete)
+    
+    databatch = music_dataloader.get_databatch()
+    data_sample = music_dataloader.get_data_sample(47)
+    

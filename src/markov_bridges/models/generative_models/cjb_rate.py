@@ -26,8 +26,8 @@ class TemporalToRateLinear(nn.Module):
     """
     def __init__(self, config:CJBConfig, temporal_output_total,device):
         nn.Module.__init__(self)
-        self.vocab_size = config.data1.vocab_size
-        self.dimensions = config.data1.dimensions
+        self.vocab_size = config.data.vocab_size
+        self.dimensions = config.data.dimensions
         self.temporal_output_total = temporal_output_total
         self.device = device
 
@@ -56,7 +56,7 @@ class TemporalToRateBernoulli(nn.Module):
     Takes the output of the temporal rate as bernoulli probabilities completing 
     with 1 - p
     """
-    def __init__(self, config:CRMConfig, temporal_output_total,device):
+    def __init__(self, config:CJBConfig, temporal_output_total,device):
         nn.Module.__init__(self)
         self.device = device
 
@@ -70,7 +70,7 @@ class TemporalToRateEmpty(nn.Module):
     """
     Directly Takes the Output and converts into a rate
     """
-    def __init__(self,  config:CRMConfig,temporal_output_total,device):
+    def __init__(self,  config:CJBConfig,temporal_output_total,device):
         nn.Module.__init__(self)
         self.device = device
 
@@ -81,10 +81,10 @@ class TemporalToRateLogistic(nn.Module):
     """
     # Truncated logistic output from https://arxiv.org/pdf/2107.03006.pdf
     """
-    def __init__(self, config:CRMConfig,temporal_output_total,device):
+    def __init__(self, config:CJBConfig,temporal_output_total,device):
         nn.Module.__init__(self)
-        self.D = config.data1.dimensions
-        self.S = config.data1.vocab_size
+        self.D = config.data.dimensions
+        self.S = config.data.vocab_size
         self.device = device
         self.fix_logistic = config.temporal_network_to_rate.fix_logistic
         
@@ -163,16 +163,11 @@ class ClassificationForwardRate(EMA,nn.Module):
         nn.Module.__init__(self)
 
         self.config = config
-
-        if isinstance(config.data1,StatesDataloaderConfig):
-            config_data = config.data0
-        else:
-            config_data = config.data1
+        config_data = config.data
 
         self.vocab_size = config_data.vocab_size
         self.dimensions = config_data.dimensions
         self.expected_data_shape = config_data.temporal_net_expected_shape
-
         self.temporal_network_to_rate = config.temporal_network_to_rate
 
         self.define_deep_models(config,device)
@@ -322,7 +317,7 @@ class ClassificationForwardRate(EMA,nn.Module):
 
     def where_to_go_x(self, x):
         x_to_go = torch.arange(0, self.vocab_size)
-        x_to_go = x_to_go[None, None, :].repeat((x.size(0), self.dimensions, 1)).float()
+        x_to_go = x_to_go[None, None, :].repeat((x.size(0), x.size(1), 1)).float()
         x_to_go = x_to_go.to(x.device)
         return x_to_go
     

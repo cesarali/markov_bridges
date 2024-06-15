@@ -24,7 +24,7 @@ import math
 class TemporalDeepMLP(nn.Module):
 
     def __init__(self,
-                 config:CRMConfig,
+                 config:CJBConfig,
                  device):
 
         super().__init__()
@@ -75,7 +75,7 @@ class TemporalDeepMLP(nn.Module):
 class TemporalMLP(nn.Module):
     """
     """
-    def __init__(self, config:CRMConfig, device):
+    def __init__(self, config:CJBConfig, device):
         super().__init__()
         if hasattr(config,'data1'):
             config_data = config.data1

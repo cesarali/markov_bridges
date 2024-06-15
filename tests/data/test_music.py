@@ -2,14 +2,17 @@ import pytest
 
 from markov_bridges.data.music_dataloaders import (
     LankhPianoRollDataloader,
-    get_data
 )
 
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
+from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
 
 def test_load_music():
     data_config = LakhPianoRollConfig()
-    train_data,  test_data, descramble_key = get_data(data_config)
+    dataloader = LankhPianoRollDataloader(data_config)
+    databatch = dataloader.get_databatch()
+    print(databatch.source_discrete.shape)
+    print(databatch.target_discrete.shape)
 
 
 if __name__=="__main__":
