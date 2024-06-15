@@ -1,8 +1,18 @@
 import os
 import torch
 import numpy as np
-from torchvision import transforms
 from PIL import Image
+from torchvision import transforms
+from markov_bridges.configs.config_classes.data.graphs_configs import GraphDataloaderGeometricConfig
+
+SqueezeTransform = transforms.Lambda(lambda x: x.squeeze())
+FlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0], -1))
+UnFlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0],
+                                                           int(np.sqrt(x.shape[1])),
+                                                           int(np.sqrt(x.shape[1]))))
+
+BinaryTensorToSpinsTransform = transforms.Lambda(lambda binary_tensor: (-1.) ** (binary_tensor + 1))
+
 
 # Create a custom transformation class
 class CorrectEMNISTOrientation(object):
@@ -57,12 +67,6 @@ class BinaryTensorToSpinsTransform:
         spins = (-1.) ** (binary_tensor + 1)
         return spins
 
-
-SqueezeTransform = transforms.Lambda(lambda x: x.squeeze())
-FlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0], -1))
-UnFlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0],
-                                                           int(np.sqrt(x.shape[1])),
-                                                           int(np.sqrt(x.shape[1]))))
 class SpinsToBinaryTensor:
     def __call__(self, tensor):
         """
@@ -78,4 +82,47 @@ class SpinsToBinaryTensor:
 
         return transformed_tensor
 
-BinaryTensorToSpinsTransform = transforms.Lambda(lambda binary_tensor: (-1.) ** (binary_tensor + 1))
+def get_transforms(config:GraphDataloaderGeometricConfig):
+    """
+    :param config:
+
+    :return: transform_list,inverse_transform_list
+    """
+    if config.flatten:
+        if config.full_adjacency:
+            transform_list = [FlattenTransform]
+            inverse_transform_list = [UnFlattenTransform]
+        else:
+            transform_list = [ToUpperDiagonalIndicesTransform()]
+            inverse_transform_list = [FromUpperDiagonalTransform()]
+    else:
+        if config.full_adjacency:
+            transform_list = []
+            inverse_transform_list = []
+        else:  # no flatten no full adjacency
+            raise Exception("No Flatten and No Full Adjacency incompatible for data")
+        
+    transform_list = transforms.Compose(transform_list)
+    inverse_transform_list = transforms.Compose(inverse_transform_list)
+
+    return transform_list,inverse_transform_list
+
+def get_expected_shape(max_node_num,flatten_adjacency,full_adjacency):
+    """
+    obtains the expected shape of the dataset
+    """
+    number_of_upper_entries = int(max_node_num*(max_node_num-1.)*.5)
+    if flatten_adjacency:
+        if full_adjacency:
+            D = max_node_num * max_node_num
+            shape = [D]
+        else:
+            D = number_of_upper_entries
+            shape = [D]
+    else:
+        if full_adjacency:
+            D = max_node_num * max_node_num
+            shape = [max_node_num, max_node_num]
+        else:
+            raise ValueError("No Flatten and No Full Adjacency incompatible for data")
+    return D, shape

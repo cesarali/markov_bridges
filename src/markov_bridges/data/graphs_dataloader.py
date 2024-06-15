@@ -11,15 +11,128 @@ from conditional_rate_matching.data.graph_dataloaders_config import GraphDataloa
 import torchvision.transforms as transforms
 
 
+import os
+import torch
+import numpy as np
+from torch.distributions import Categorical
+from torch.utils.data import TensorDataset,DataLoader
+from markov_bridges.configs.config_classes.data.graphs_configs import GraphDataloaderGeometricConfig
+from markov_bridges.configs.config_classes.data.basics_configs import MarkovBridgeDataConfig
+
+from markov_bridges.data.abstract_dataloader import (
+    MarkovBridgeDataloader,
+    MarkovBridgeDataClass,
+    MarkovBridgeDataset,
+    MarkovBridgeDataNameTuple
+)
+
+from markov_bridges.utils.graphs_utils import graphs_to_tensor
+from markov_bridges.data.transforms import get_transforms,get_expected_shape
+
+class GraphDataloader(MarkovBridgeDataloader):
+    """
+    """
+    graph_config : GraphDataloaderGeometricConfig
+    name:str = "GraphDataloader"
+    max_node_num:int 
+    expected_shape:List[int]
+
+    def __init__(self,graph_config:GraphDataloaderGeometricConfig):
+        """
+        :param config:
+        :param device:
+        """
+        self.graph_config = graph_config
+        self.transform_list,self.inverse_transform_list = get_transforms(graph_config)
+        self.get_dataloaders()
+
+    def get_dataloaders(self):
+        """
+        Creates the dataloaders
+        """
+        train_data,test_data = self.get_target_data(self.graph_config)
+
+        self.dimension,self.expected_shape = get_expected_shape(self.max_node_num,
+                                                                self.graph_config.flatten,
+                                                                self.graph_config.full_adjacency)
+        
+        self.graph_config.temporal_net_expected_shape = self.expected_shape
+        self.graph_config.number_of_nodes = self.max_node_num
+        self.graph_config.dimensions = self.dimension
+
+        train_data = self.get_data_divisions(train_data,self.graph_config)
+        train_data = MarkovBridgeDataset(train_data)
+
+        test_data = self.get_data_divisions(test_data,self.graph_config)
+        test_data = MarkovBridgeDataset(test_data)
+
+        self.train_dataloader = DataLoader(train_data, batch_size=self.graph_config.batch_size, shuffle=True)
+        self.test_dataloader = DataLoader(test_data,batch_size=self.graph_config.batch_size, shuffle=True)
+
+    def get_target_data(self,data_config:MarkovBridgeDataConfig):
+        """
+        reads the data files
+        """
+        train_graph_list, test_graph_list,max_number_of_nodes,min_number_of_nodes = self.read_graph_lists()
+        train_data = graphs_to_tensor(train_graph_list,max_number_of_nodes)
+        test_data = graphs_to_tensor(test_graph_list,max_number_of_nodes)
+
+        self.max_node_num = max_number_of_nodes
+        self.min_node_num = min_number_of_nodes
+
+        return train_data,test_data
+    
+    def get_source_data(self,dataset,data_config:MarkovBridgeDataConfig):
+        dataset_size = dataset.size(0)
+        if data_config.source_discrete_type == "uniform":
+            vocab_size = data_config.vocab_size
+            NoiseDistribution = Categorical(torch.full((vocab_size,),1./vocab_size))
+            noise_sample = NoiseDistribution.sample((dataset_size,self.dimension))
+            return noise_sample
+        else:
+            raise Exception("Source not Implemented")
+    
+    def get_data_divisions(self,dataset,data_config:MarkovBridgeDataConfig)->MarkovBridgeDataClass:
+        """
+        divides the data in the different context, source and target
+        """
+        # preprocess data
+        target_discrete = self.transform_list(dataset)
+
+        # source
+        source_discrete = self.get_source_data(target_discrete,data_config)
+
+        return MarkovBridgeDataClass(source_discrete=source_discrete,
+                                    target_discrete=target_discrete)
+    
+    def read_graph_lists(self)->Tuple[List[nx.Graph]]:
+        """
+        :return: train_graph_list, test_graph_list
+        """
+        data_dir = self.graph_config.data_dir
+        file_name = self.graph_config.dataset_name
+        file_path = os.path.join(data_dir, file_name)
+        with open(file_path + '.pkl', 'rb') as f:
+            graph_list = pickle.load(f)
+        test_size = int(self.graph_config.test_split * len(graph_list))
+
+        all_node_numbers = list(map(lambda x: x.number_of_nodes(), graph_list))
+
+        max_number_of_nodes = max(all_node_numbers)
+        min_number_of_nodes = min(all_node_numbers)
+
+        train_graph_list, test_graph_list = graph_list[test_size:], graph_list[:test_size]
+        return train_graph_list, test_graph_list,max_number_of_nodes,min_number_of_nodes
+
 class GraphDataloaders:
     """
+
     """
     graph_data_config : GraphDataloaderConfig
     name:str = "GraphDataloaders"
 
     def __init__(self,graph_data_config,bridge_data=None):
         """
-
         :param config:
         :param device:
         """
@@ -36,7 +149,6 @@ class GraphDataloaders:
 
         if graph_data_config.max_test_size is not None:
             test_graph_list = [test_graph_list[i] for i in range(min(graph_data_config.max_test_size,len(test_graph_list)))]
-
 
         self.training_data_size = len(train_graph_list)
         self.test_data_size = len(test_graph_list)
@@ -70,34 +182,6 @@ class GraphDataloaders:
 
     def test(self):
         return self.test_dataloader_
-
-    def sample(self,sample_size=10,type="train"):
-        if type == "train":
-            data_iterator = self.train()
-        else:
-            data_iterator = self.test()
-
-        included = 0
-        x_adj_list = []
-        x_features_list = []
-        for databatch in data_iterator:
-            x_adj = databatch[0]
-            x_features = databatch[1]
-            x_adj_list.append(x_adj)
-            x_features_list.append(x_features)
-
-            current_batchsize = x_adj.shape[0]
-            included += current_batchsize
-            if included > sample_size:
-                break
-
-        if included < sample_size:
-            raise Exception("Sample Size Smaller Than Expected")
-
-        x_adj_list = torch.vstack(x_adj_list)
-        x_features_list = torch.vstack(x_features_list)
-
-        return [x_adj_list[:sample_size],x_features_list[:sample_size]]
 
     def create_dataloaders(self,x_tensor, adjs_tensor):
         train_ds = TensorDataset(x_tensor, adjs_tensor)
@@ -146,29 +230,5 @@ class GraphDataloaders:
         x_tensor = init_features(init,adjs_tensor,max_feat_num)
         return adjs_tensor,x_tensor
 
-    def read_graph_lists(self,bridge_data=None)->Tuple[List[nx.Graph]]:
-        """
-
-        :return: train_graph_list, test_graph_list
-
-        """
-        data_dir = self.graph_data_config.data_dir
-        file_name = self.graph_data_config.dataset_name
-        file_path = os.path.join(data_dir, file_name)
-        with open(file_path + '.pkl', 'rb') as f:
-            graph_list = pickle.load(f)
-        test_size = int(self.graph_data_config.test_split * len(graph_list))
-
-        all_node_numbers = list(map(lambda x: x.number_of_nodes(), graph_list))
-
-        max_number_of_nodes = max(all_node_numbers)
-        min_number_of_nodes = min(all_node_numbers)
-
-        train_graph_list, test_graph_list = graph_list[test_size:], graph_list[:test_size]
-        if bridge_data is None:
-            return train_graph_list, test_graph_list,max_number_of_nodes,min_number_of_nodes
-        else:
-            train_graph_list = [obtain_power_law_graph(networkx_graph)[0] for networkx_graph in train_graph_list]
-            test_graph_list = [obtain_power_law_graph(networkx_graph)[0] for networkx_graph in train_graph_list]
-            return train_graph_list, test_graph_list,max_number_of_nodes,min_number_of_nodes
+ 
 
