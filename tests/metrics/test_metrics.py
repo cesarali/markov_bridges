@@ -18,7 +18,7 @@ def test_log_metrics():
     model_config.temporal_network = SequenceTransformerConfig(num_heads=1,num_layers=1)
 
     cjb = CJB(model_config)
-    log_metrics(cjb,[metrics_available.histogram_hellinger])
+    log_metrics(cjb,[metrics_available.histogram_hellinger],debug=True)
 
 if __name__=="__main__":
     test_log_metrics()

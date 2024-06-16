@@ -15,7 +15,7 @@ graph_data_path = os.path.join(data_path,"raw","graph")
 class GraphDataloaderGeometricConfig(MarkovBridgeDataConfig):
     name:str = "GraphDataloaderGeometric"
     data_dir:str = graph_data_path
-    
+
     dataset_name: str =None
     batch_size: int=None
     data_dir:str = graph_data_path
@@ -50,7 +50,6 @@ class EgoGConfig(GraphDataloaderGeometricConfig):
     max_node_num: int = 17
     max_feat_num: int = 17
     total_data_size:int = 200
-    init: str = "ones"
 
 @dataclass
 class CommunitySmallGConfig(GraphDataloaderGeometricConfig):
@@ -60,7 +59,6 @@ class CommunitySmallGConfig(GraphDataloaderGeometricConfig):
     max_node_num: int = 20
     max_feat_num: int = 10
     total_data_size:int = 200
-    init: str = 'ones'
 
 @dataclass
 class CommunityGConfig(GraphDataloaderGeometricConfig):
@@ -70,7 +68,6 @@ class CommunityGConfig(GraphDataloaderGeometricConfig):
     max_node_num: int = 11
     max_feat_num: int = 10
     total_data_size:int = 1000
-    init: str = 'ones'
 
 @dataclass
 class GridGConfig(GraphDataloaderGeometricConfig):
@@ -80,7 +77,6 @@ class GridGConfig(GraphDataloaderGeometricConfig):
     max_node_num: int = 361
     max_feat_num: int = 5
     total_data_size:int = 200
-    init: str = 'ones'
 
 @dataclass
 class EnzymesGConfig(GraphDataloaderGeometricConfig):
@@ -90,4 +86,7 @@ class EnzymesGConfig(GraphDataloaderGeometricConfig):
     max_node_num: int = 125
     max_feat_num: int = 10
     total_data_size:int = 587
-    init: str = 'ones'
+
+dataset_str_to_config = {'ENZYMES':EnzymesGConfig,
+                         "grid":GridGConfig,
+                         "community_small":CommunitySmallGConfig}

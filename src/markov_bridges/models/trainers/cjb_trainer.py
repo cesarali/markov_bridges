@@ -22,7 +22,6 @@ from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 class CJBTrainer(Trainer):
 
     config: CJBConfig
-    generative_model: CJB
     generative_model_class = CJB
     name_ = "conditional_jump_bridge_trainer"
 
@@ -30,8 +29,8 @@ class CJBTrainer(Trainer):
         self.config = config
         self.number_of_epochs = self.config.trainer.number_of_epochs
         device_str = self.config.trainer.device
-
         self.device = torch.device(device_str if torch.cuda.is_available() else "cpu")
+
         if crm is None:
             self.generative_model = CJB(self.config, experiment_files=experiment_files, device=self.device)
         else:
@@ -104,9 +103,9 @@ class CJBTrainer(Trainer):
             loss = self.generative_model.loss(model_classification_, target_discrete_.long())
         else:
             model_classification = self.generative_model.forward_rate.classify(sampled_x, time)
-            model_classification_ = model_classification.view(-1, self.config.data1.vocab_size)
-            x_1 = x_1.view(-1)
-            loss = self.generative_model.loss(model_classification_,x_1.long())
+            model_classification_ = model_classification.view(-1, self.config.data.vocab_size)
+            target_discrete_ = databatch.target_discrete.reshape(-1)
+            loss = self.generative_model.loss(model_classification_,target_discrete_.long())
 
         loss = loss.mean()
         # optimization
@@ -131,43 +130,38 @@ class CJBTrainer(Trainer):
         self.writer.add_scalar('training loss', loss.item(), number_of_training_step)
         return loss
 
-    def test_step(self,databatch,number_of_test_step,epoch):
-        batch_0, batch_1 = databatch
+    def test_step(self,databatch:MarkovBridgeDataNameTuple, number_of_test_step,epoch):
         with torch.no_grad():
+            conditional_dimension = self.config.data.context_dimension
+            join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
+            remove_context = lambda full_data_discrete : full_data_discrete[:,conditional_dimension:]
+
             # data pair and time sample
-            x_1, x_0 = self.generative_model.sample_pair(batch_1, batch_0, self.device)
-
-            x_0 = x_0.float().to(self.device)
-            x_1 = x_1.float().to(self.device)
-
-            if len(x_0.shape) > 2:
-                batch_size = x_0.size(0)
-                x_0 = x_0.reshape(batch_size,-1)
-
-            if len(x_1.shape) > 2:
-                batch_size = x_1.size(0)
-                x_1 = x_1.reshape(batch_size,-1)
+            target_discrete, source_discrete = self.generative_model.sample_pair(databatch,self.device)
 
             # time selection
-            batch_size = x_0.size(0)
+            batch_size = source_discrete.size(0)
             time = torch.rand(batch_size).to(self.device)
 
             # sample x from z
-            sampled_x = self.generative_model.forward_rate.sample_x(x_1, x_0, time)
+            sampled_x = self.generative_model.forward_rate.sample_x(target_discrete, source_discrete, time).float()
+                
+            # loss
+            if self.config.data.has_context_discrete:
+                completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
+                model_classification = self.generative_model.forward_rate.classify(completed_sampled_x, time)
+                model_classification_ = model_classification[:, self.config.data.context_dimension:,:]
+                # reshape for cross logits
+                model_classification_ = model_classification_.reshape(-1, self.config.data.vocab_size)
+                target_discrete_ = databatch.target_discrete.reshape(-1)
 
-            #LOSS
-            model_classification = self.generative_model.forward_rate.classify(sampled_x.float(), time)
-            model_classification_ = model_classification.view(-1, self.config.data1.vocab_size)
-            x_1 = x_1.view(-1)
-            loss = self.generative_model.loss(model_classification_,x_1.long())
-            if self.config.trainer.loss_regularize:
-                if self.config.trainer.loss_regularize_square:
-                    rate_regularizer = self.generative_model.forward_rate.thermostat(time)
-                else:
-                    rate_regularizer = self.generative_model.forward_rate.thermostat(time)
-                rate_regularizer = rate_regularizer[:, None]
-                rate_regularizer = rate_regularizer.repeat((1, self.config.data1.dimensions)).view(-1)
-                loss = rate_regularizer*loss
+                loss = self.generative_model.loss(model_classification_, target_discrete_.long())
+            else:
+                model_classification = self.generative_model.forward_rate.classify(sampled_x, time)
+                model_classification_ = model_classification.view(-1, self.config.data.vocab_size)
+                target_discrete_ = databatch.target_discrete.reshape(-1)
+                loss = self.generative_model.loss(model_classification_,target_discrete_.long())
+
             loss = loss.mean()
             self.writer.add_scalar('test loss', loss.item(), number_of_test_step)
 

@@ -8,7 +8,7 @@ from markov_bridges.configs.config_classes.generative_models.cjb_config import C
 from markov_bridges.configs.config_classes.metrics.metrics_configs import(
     MusicPlotConfig,
     HellingerMetricConfig,
-    metrics_str_to_config_class
+    metrics_config
 )
 
 from markov_bridges.models.metrics.histogram_metrics import HellingerMetric
@@ -17,7 +17,7 @@ def load_metric(cjb:CJB,metric_config:Union[str]):
     # Metrics can be passed as simple strings or with the full ConfigClass
     # here we ensure the metric is a config before defining the class
     if isinstance(metric_config,str):
-        metric_config = metrics_str_to_config_class[metric_config]
+        metric_config = metrics_config[metric_config]()
     if isinstance(metric_config,HellingerMetricConfig):
         metric = HellingerMetric(cjb,metric_config)
     return metric
@@ -33,7 +33,7 @@ def obtain_metrics_stats(model_config:CJBConfig,metrics_configs_list):
         requieres_test_loop = False
 
         if isinstance(metric_config,str):
-            metric_config = metrics_str_to_config_class[metric_config]
+            metric_config = metrics_config[metric_config]
     
         if metric_config.requieres_paths:
             return_path = True

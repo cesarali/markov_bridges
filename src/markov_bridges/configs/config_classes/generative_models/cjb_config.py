@@ -23,10 +23,13 @@ from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs impo
 
 from markov_bridges.configs.config_classes.trainers.trainer_config import BasicTrainerConfig
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
+from markov_bridges.configs.config_classes.data.graphs_configs import GraphDataloaderGeometricConfig
 
+from markov_bridges.configs.config_classes.metrics.metrics_configs import metrics_config
 image_data_path = os.path.join(data_path,"raw")
 
-data_configs = {"LakhPianoRoll":LakhPianoRollConfig}
+data_configs = {"LakhPianoRoll":LakhPianoRollConfig,
+                "GraphDataloaderGeometric":GraphDataloaderGeometricConfig}
 
 temporal_network_configs = {
     "TemporalMLP":TemporalMLPConfig,
@@ -50,7 +53,18 @@ class CJBTrainerConfig(BasicTrainerConfig):
     loss_regularize_square:bool = False
     max_iterations:int = 1000000
     warm_up:int=0
-    
+
+    def __post_init__(self):
+        new_metrics = []
+        for metric in self.metrics:
+            if isinstance(metric,dict):
+                metric = metrics_config[metric["name"]](**metric)
+                new_metrics.append(metric)
+            elif isinstance(metric,str):
+                new_metrics.append(metric)
+            else:
+                pass
+        
 @dataclass
 class OptimalTransportSamplerConfig:
     name: str = "uniform" # uniform,OTPlanSampler

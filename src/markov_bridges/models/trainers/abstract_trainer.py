@@ -89,6 +89,7 @@ class Trainer(ABC):
         self.writer = SummaryWriter(self.generative_model.experiment_files.tensorboard_path)
         self.tqdm_object = tqdm(range(self.config.trainer.number_of_epochs))
         self.best_metric = np.inf
+        self.dataloader = self.generative_model.dataloader
 
 
     @abstractmethod

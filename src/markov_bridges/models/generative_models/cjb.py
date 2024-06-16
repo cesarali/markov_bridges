@@ -77,17 +77,24 @@ class CJB:
             config_path_json["delete"] = False
         self.config = CJBConfig(**config_path_json)
         if set_data_path is not None:
-            self.config.data1.data_dir = set_data_path
-            self.config.data0.data_dir = set_data_path
+            self.config.data.data_dir = set_data_path
         if device is None:
             self.device = torch.device(self.config.trainer.device) if torch.cuda.is_available() else torch.device("cpu")
         else:
             self.device = device
 
         self.forward_rate.to(self.device)
-        self.dataloader_0, self.dataloader_1,self.parent_dataloader = get_dataloaders(self.config)
-
-        self.pipeline = CJBPipeline(self.config, self.forward_rate, self.dataloader_0, self.dataloader_1,self.parent_dataloader)
+        self.dataloader = get_dataloaders(self.config)
+        self.pipeline = CJBPipeline(self.config,self.forward_rate,self.dataloader)
+        if self.config.optimal_transport.cost == "log":
+            B = self.forward_rate.log_cost_regularizer()
+            B = B.item() if isinstance(B,torch.Tensor) else B
+            self.config.optimal_transport.method = "sinkhorn"
+            self.config.optimal_transport.normalize_cost = True
+            self.config.optimal_transport.normalize_cost_constant = float(self.config.data.dimensions)
+            reg = 1./B
+            print("OT regularizer for Schrodinger Plan {0}".format(reg))
+            self.config.optimal_transport.reg = reg        
         self.op_sampler = OTPlanSampler(**asdict(self.config.optimal_transport))
 
     def start_new_experiment(self):

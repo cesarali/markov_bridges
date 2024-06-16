@@ -49,8 +49,8 @@ class MetricsAvaliable:
     outlier:str = "outlier"
     music_plot:str = "music_plot"
 
-metrics_str_to_config_class = {
-    "histogram_hellinger":HellingerMetricConfig(),
-    "outlier":OutlierMetricConfig(),
-    "music_plot":MusicPlotConfig(),
+metrics_config = {
+    "histogram_hellinger":HellingerMetricConfig,
+    "outlier":OutlierMetricConfig,
+    "music_plot":MusicPlotConfig,
 }

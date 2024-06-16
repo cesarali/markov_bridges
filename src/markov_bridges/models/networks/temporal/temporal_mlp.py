@@ -29,8 +29,8 @@ class TemporalDeepMLP(nn.Module):
 
         super().__init__()
         self.config = config
-        self.dimensions = config.data1.dimensions
-        self.vocab_size = config.data1.vocab_size
+        self.dimensions = config.data.dimensions
+        self.vocab_size = config.data.vocab_size
         self.define_deep_models(config)
         self.init_weights()
         self.to(device)
@@ -77,11 +77,7 @@ class TemporalMLP(nn.Module):
     """
     def __init__(self, config:CJBConfig, device):
         super().__init__()
-        if hasattr(config,'data1'):
-            config_data = config.data1
-        else:
-            config_data = config.data0
-
+        config_data = config.data
         self.dimensions = config_data.dimensions
         self.vocab_size = config_data.vocab_size
         self.define_deep_models(config)
@@ -113,11 +109,11 @@ class TemporalMLP(nn.Module):
 
 class TemporalUNet(nn.Module):
 
-    def __init__(self, config, device):
+    def __init__(self, config:CJBConfig, device):
         super().__init__()
 
-        self.dimensions = config.data0.dimensions
-        self.vocab_size = config.data0.vocab_size
+        self.dimensions = config.data.dimensions
+        self.vocab_size = config.data.vocab_size
         self.dim_time_emb = config.temporal_network.time_embed_dim
         self.dim_hidden = config.temporal_network.hidden_dim
         self.dropout = config.temporal_network.dropout
