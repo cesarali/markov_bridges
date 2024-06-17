@@ -25,22 +25,25 @@ class CJBTrainer(Trainer):
     generative_model_class = CJB
     name_ = "conditional_jump_bridge_trainer"
 
-    def __init__(self,config,experiment_files,cjb=None,experiment_dir=None,starting_type="last"):
+    def __init__(self,config=None,experiment_files=None,cjb=None,experiment_dir=None,starting_type="last"):
         """
         If experiment dir is provided, he loads the model from that folder and then creates
         a new folder 
         """
-        self.config = config
-        self.number_of_epochs = self.config.trainer.number_of_epochs
-        device_str = self.config.trainer.device
-        self.device = torch.device(device_str if torch.cuda.is_available() else "cpu")
 
         if experiment_dir is not None:
             print("Starting Training from Model Provided in Experiment Dirs")
-            self.generative_model = CJB(experiment_dir=experiment_dir, device=self.device)
+            self.generative_model = CJB(experiment_dir=experiment_dir,type_of_load=starting_type)
             self.generative_model.experiment_files = experiment_files
+            self.config = self.generative_model.config
+            self.number_of_epochs = self.config.trainer.number_of_epochs
+            device_str = self.config.trainer.device
+            self.device = torch.device(device_str if torch.cuda.is_available() else "cpu")
         else:
-
+            self.config = config
+            self.number_of_epochs = self.config.trainer.number_of_epochs
+            device_str = self.config.trainer.device
+            self.device = torch.device(device_str if torch.cuda.is_available() else "cpu")
             if cjb is None:
                 self.generative_model = CJB(self.config, experiment_files=experiment_files, device=self.device)
             else:

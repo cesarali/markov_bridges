@@ -64,6 +64,7 @@ class CJBTrainerConfig(BasicTrainerConfig):
                 new_metrics.append(metric)
             else:
                 pass
+        self.metrics = new_metrics
         
 @dataclass
 class OptimalTransportSamplerConfig:

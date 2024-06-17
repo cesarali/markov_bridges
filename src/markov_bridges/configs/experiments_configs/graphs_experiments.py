@@ -37,16 +37,23 @@ def continue_graph_experiment(experiment_dir):
     experiment_files = ExperimentFiles(experiment_name="cjb",
                                        experiment_type="graph")    
     
-    trainer = CJBTrainer(config=experiment_config,
-                         experiment_files=experiment_files)
-    return None
+    trainer = CJBTrainer(experiment_files=experiment_files,
+                         experiment_dir=experiment_dir,
+                         starting_type="last")
+    
+    trainer.train()
 
 if __name__=="__main__":
-    experiment_config = get_graph_experiment(number_of_epochs=200)
-    experiment_files = ExperimentFiles(experiment_name="cjb",
-                                       experiment_type="graph")    
-    
-    
-    trainer = CJBTrainer(config=experiment_config,
-                         experiment_files=experiment_files)
-    trainer.train()
+    start = False
+    if start:
+        experiment_config = get_graph_experiment(number_of_epochs=200)
+        experiment_files = ExperimentFiles(experiment_name="cjb",
+                                        experiment_type="graph")    
+        
+        
+        trainer = CJBTrainer(config=experiment_config,
+                            experiment_files=experiment_files)
+        trainer.train()
+    else:
+        experiment_dir = r"C:\Users\cesar\Desktop\Projects\DiffusiveGenerativeModelling\OurCodes\markov_bridges\results\cjb\graph\1718616860"
+        continue_graph_experiment(experiment_dir)
