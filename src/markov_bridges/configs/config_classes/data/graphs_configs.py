@@ -1,8 +1,7 @@
 import os
-from conditional_rate_matching import data_path
+from markov_bridges import data_path
 from dataclasses import dataclass,asdict,field
 from typing import List, Union, Optional, Tuple, Dict
-from conditional_rate_matching.configs.utils import expected_shape
 from markov_bridges.configs.config_classes.data.basics_configs import MarkovBridgeDataConfig
 
 graph_data_path = os.path.join(data_path,"raw","graph")

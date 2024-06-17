@@ -32,7 +32,7 @@ def conditional_music_experiment(number_of_epochs=3)->CJBConfig:
     experiment_config.trainer.warm_up = 5  #CHANGE
     experiment_config.trainer.learning_rate = 1e-4
     # metrics
-    experiment_config.trainer.metrics = [HellingerMetricConfig()]
+    experiment_config.trainer.metrics = [] #[HellingerMetricConfig()]
     
     return experiment_config
 
@@ -48,7 +48,7 @@ def continue_music_experiment(experiment_dir):
 
 
 if __name__=="__main__":
-    start = False # START NEW EXPERIMENT
+    start = True # START NEW EXPERIMENT
     if start:
         experiment_config = conditional_music_experiment(number_of_epochs=3)
         experiment_config.trainer.debug = True # CHANGE
