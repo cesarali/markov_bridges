@@ -24,6 +24,7 @@ class TrainerState:
     test_loss: List[float] = field(default_factory=lambda:[])
     train_loss: List[float] = field(default_factory=lambda:[])
 
+    epoch:int = 0
     number_of_test_step:int = 0
     number_of_training_steps:int = 0
 
@@ -138,8 +139,13 @@ class Trainer(ABC):
         results_ = {}
         self.saved = False
 
-        training_state = TrainerState(self.generative_model)
+        training_state = TrainerState(self.generative_model,
+                                      epoch=self.generative_model.config.trainer.epoch,
+                                      number_of_training_steps=self.generative_model.config.trainer.number_of_training_steps,
+                                      number_of_test_step=self.generative_model.config.trainer.number_of_test_step)
+        
         for epoch in self.tqdm_object:
+            training_state.epoch = training_state.epoch + epoch
             #TRAINING
             for step, databatch in enumerate(self.dataloader.train()):
                 databatch = self.preprocess_data(databatch)
@@ -202,7 +208,10 @@ class Trainer(ABC):
         experiment_dir = self.generative_model.experiment_files.experiment_dir
         if self.saved:
             self.generative_model = self.generative_model_class(experiment_dir=experiment_dir)
-        all_metrics = log_metrics(self.generative_model,self.config.trainer.metrics, epoch="best",debug=False)
+        all_metrics = log_metrics(self.generative_model,
+                                  self.config.trainer.metrics, 
+                                  epoch="best",
+                                  debug=self.config.trainer.debug)
         self.writer.close()
 
         return results_,all_metrics
@@ -218,6 +227,9 @@ class Trainer(ABC):
             "training_loss":training_state.average_train_loss,
             "test_loss":training_state.average_test_loss,
             "all_training_loss":training_state.all_training_loss,
+            "number_of_test_step":training_state.number_of_test_step,
+            "number_of_training_steps":training_state.number_of_training_steps,
+            "epoch":training_state.epoch,
         }
         if checkpoint:
             best_model_path_checkpoint = self.generative_model.experiment_files.best_model_path_checkpoint.format(epoch)

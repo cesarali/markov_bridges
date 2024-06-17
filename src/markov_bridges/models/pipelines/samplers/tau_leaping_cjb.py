@@ -77,9 +77,9 @@ def TauLeapingCJB(config:Union[CJBConfig],
             x_new = torch.clamp(xp, min=0, max=S-1)
             x = x_new
 
-            #if config.data.has_context_discrete:
-            #    x = remove_context(x)
-            #    x = join_context(x_0.context_discrete,x).clone()
+            if config.data.has_context_discrete:
+                x = remove_context(x)
+                x = join_context(x_0.context_discrete,x).clone()
 
         # last step ------------------------------------------------
         if config.data.has_context_discrete:

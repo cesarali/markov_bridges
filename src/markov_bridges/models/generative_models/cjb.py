@@ -84,6 +84,10 @@ class CJB:
         results_ = self.experiment_files.load_results(self.type_of_load,
                                                       device=torch.device("cpu"))
         self.forward_rate = results_["model"]
+        number_of_test_step = results_["number_of_test_step"]
+        number_of_training_steps = results_["number_of_training_steps"]
+        epoch  = results_["epoch"]
+
         config_path_json = json.load(open(self.experiment_files.config_path, "r"))
 
         if hasattr(config_path_json,"delete"):
@@ -96,6 +100,10 @@ class CJB:
         else:
             self.device = device
 
+        self.config.trainer.epoch = epoch + 1
+        self.config.trainer.number_of_test_step = number_of_test_step + 1
+        self.config.trainer.number_of_training_steps = number_of_training_steps + 1
+        
         self.forward_rate.to(self.device)
         self.dataloader = get_dataloaders(self.config)
         self.pipeline = CJBPipeline(self.config,self.forward_rate,self.dataloader)
@@ -110,6 +118,8 @@ class CJB:
             self.config.optimal_transport.reg = reg        
         self.op_sampler = OTPlanSampler(**asdict(self.config.optimal_transport))
 
+        return epoch,number_of_training_steps,number_of_test_step
+    
     def load_from_experiment_and_start_new():
         return None
     

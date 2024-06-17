@@ -8,6 +8,11 @@ ORCA_DIR_STANDARD = str(ORCA_DIR_STANDARD)
 
 @dataclass
 class BasicTrainerConfig:
+
+    epoch:int = 0
+    number_of_training_steps:int = 0
+    number_of_test_step:int = 0
+
     number_of_epochs:int = 300
     log_loss:int = 100
     warm_up_best_model_epoch:int = 0
