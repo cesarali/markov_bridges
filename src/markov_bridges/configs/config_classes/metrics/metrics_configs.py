@@ -17,31 +17,18 @@ class BasicMetricConfig:
 class HellingerMetricConfig(BasicMetricConfig):
     name:str = "histogram_hellinger"
 
-    requieres_paths:bool = False
-    requieres_origin:bool = False
-    requieres_test_loop:bool = False
-
+    binary:bool = False
+    plot_histogram:bool = False
     plot_binary_histogram:bool = False
 
 @dataclass
 class OutlierMetricConfig(BasicMetricConfig):
     name:str = "outlier"
 
-    requieres_paths:bool = False
-    requieres_origin:bool = False
-    requieres_test_loop:bool = False
-
-    plot_binary_histogram:bool = False
-
 @dataclass
 class MusicPlotConfig(BasicMetricConfig):
     name:str = "music_plot"
 
-    requieres_paths:bool = False
-    requieres_origin:bool = False
-    requieres_test_loop:bool = False
-
-    plot_binary_histogram:bool = False
 
 @dataclass
 class MetricsAvaliable:

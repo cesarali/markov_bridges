@@ -68,6 +68,7 @@ class ExperimentFiles:
         self.config_path = os.path.join(self.experiment_dir,"config.json")
         self.best_model_path_checkpoint = os.path.join(self.experiment_dir, "model_checkpoint_{0}.tr")
         self.best_model_path = os.path.join(self.experiment_dir, "best_model.tr")
+        self.last_model = os.path.join(self.experiment_dir, "last_model.tr")
         self.metrics_file = os.path.join(self.experiment_dir, "metrics_{0}.json")
         self.plot_path = os.path.join(self.experiment_dir, "plot_{0}.png")
 
@@ -91,7 +92,7 @@ class ExperimentFiles:
     #========================================================================================
     # READ FROM FILES
     #========================================================================================
-    def load_metric(self, metric_string_identifier, checkpoint=None):
+    def load_metric(self, metric_string_identifier, checkpoint=None, last_model=True):
         def obtain_number (x):
             if x.name.split("_")[-1].split(".")[0].isdigit():
                 return int(x.name.split("_")[-1].split(".")[0])
@@ -144,12 +145,31 @@ class ExperimentFiles:
             all_metrics.update(self.load_metric(metric_string_identifier, checkpoint=checkpoint))
         return all_metrics
 
-    def load_results(self, checkpoint=None, any=True,device=torch.device("cpu")):
+    def load_results(self,type_of_load="best",device=torch.device("cpu")):
+        any=False
+        checkpoint=None
+        #define type of load
+        if isinstance(type_of_load,int):
+            checkpoint=type_of_load
+        else:
+            if type_of_load == "best":
+                last_model = False
+                any = True
+            elif type_of_load == "last":
+                last_model = True
+
         # LOADS RESULTS
         loaded_path = None
         if checkpoint is None:
             best_model_to_load_path = Path(self.best_model_path)
+            last_model_to_load_path = Path(self.last_model)
 
+            if last_model:
+                if last_model_to_load_path.exists():
+                    results_ = torch.load(last_model_to_load_path,map_location=device)
+                    loaded_path = last_model_to_load_path
+                    return results_
+                
             if best_model_to_load_path.exists():
                 results_ = torch.load(best_model_to_load_path,map_location=device)
                 loaded_path = best_model_to_load_path
@@ -183,7 +203,7 @@ class ExperimentFiles:
                 results_ = torch.load(check_point_to_load_path,map_location=device)
                 loaded_path = check_point_to_load_path
                 return results_
-
+            
         if loaded_path is None:
             print("Experiment Empty")
             return None

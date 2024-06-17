@@ -24,8 +24,9 @@ def TauLeapingCJB(config:Union[CJBConfig],
     S = config.data.vocab_size
     conditional_dimension = config.data.context_dimension
 
-    join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
-    remove_context = lambda full_data_discrete : full_data_discrete[:,conditional_dimension:]
+    if config.data.has_context_discrete:
+        join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
+        remove_context = lambda full_data_discrete : full_data_discrete[:,conditional_dimension:]
 
     number_of_paths = x_0.source_discrete.size(0)
 
@@ -39,7 +40,10 @@ def TauLeapingCJB(config:Union[CJBConfig],
     # CONDITIONAL SAMPLING
     #==========================================
     with torch.no_grad():
-        x = join_context(x_0.context_discrete,x_0.source_discrete).clone()
+        if config.data.has_context_discrete:
+            x = join_context(x_0.context_discrete,x_0.source_discrete).clone()
+        else:
+            x = x_0.source_discrete
             
         # define time
         ts = np.concatenate((np.linspace(1.0 - time_epsilon, min_t, num_steps), np.array([0])))
@@ -73,8 +77,9 @@ def TauLeapingCJB(config:Union[CJBConfig],
             x_new = torch.clamp(xp, min=0, max=S-1)
             x = x_new
 
-            # x = remove_context(x)
-            # x = join_context(x_0.context_discrete,x).clone()
+            #if config.data.has_context_discrete:
+            #    x = remove_context(x)
+            #    x = join_context(x_0.context_discrete,x).clone()
 
         # last step ------------------------------------------------
         if config.data.has_context_discrete:
@@ -83,6 +88,7 @@ def TauLeapingCJB(config:Union[CJBConfig],
 
         p_0gt = rate_model(x, min_t * torch.ones((number_of_paths,), device=device)) # (N, D, S)
         x_0max = torch.max(p_0gt, dim=2)[1]
+        
         if config.data.has_context_discrete:
             x_0max = remove_context(x_0max)
             x_0max = join_context(x_0.context_discrete,x_0max).clone()

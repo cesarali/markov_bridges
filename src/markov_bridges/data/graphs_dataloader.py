@@ -87,7 +87,7 @@ class GraphDataloader(MarkovBridgeDataloader):
         if data_config.source_discrete_type == "uniform":
             vocab_size = data_config.vocab_size
             NoiseDistribution = Categorical(torch.full((vocab_size,),1./vocab_size))
-            noise_sample = NoiseDistribution.sample((dataset_size,self.dimension))
+            noise_sample = NoiseDistribution.sample((dataset_size,self.dimension)).float()
             return noise_sample
         else:
             raise Exception("Source not Implemented")

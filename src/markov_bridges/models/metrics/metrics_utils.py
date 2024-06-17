@@ -44,13 +44,13 @@ def obtain_metrics_stats(model_config:CJBConfig,metrics_configs_list):
 
     return return_path,return_origin,requieres_test_loop
 
-def log_metrics(model:CJB,metrics_configs_list,debug=False):
+def log_metrics(model:CJB,metrics_configs_list,epoch=None,debug=False):
     """
     In order to obtain metrics one is usually requiered to generate a sample of the size of the test set
     and obtain statistics for both the test set as well as the whole generated samples and perform distances
-    e.g. one requieres the histograms of a generated sampled of the size of test set and then a histogram of the 
+    e.g. one requieres the histograms of a generated sampled of size of test set and then a histogram of the 
     test set and calculate say hellinger distance, this means that each metric must perform and operation during 
-    each test set batch and then a final operation after the statistics are gathered
+    each test set batch and then a final operation after the statistics are gathered.
     """
     # Define List of Metrics
     metrics  = []
@@ -74,4 +74,4 @@ def log_metrics(model:CJB,metrics_configs_list,debug=False):
 
     # Do Final Operation Per Metric
     for metric in metrics:
-        metric.final_operation()
+        metric.final_operation(epoch)

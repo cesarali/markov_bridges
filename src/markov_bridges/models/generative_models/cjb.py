@@ -21,6 +21,16 @@ from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
 @dataclass
 class CJB:
+    """
+    This class contains all elements to sample and train a conditional jump bridge model
+    
+    if DEVICE is not provided it is obtained from the trainers config 
+
+    the actual torch model that contains the networks for sampling is specified in forward rate
+    and contains all the mathematical elements.
+
+    the experiment folder is created in experiment files and 
+    """
     config: CJBConfig = None
     experiment_dir:str = None
 
@@ -31,6 +41,7 @@ class CJB:
     pipeline:CJBPipeline = None
     device: torch.device = None
     image_data_path: str = None
+    type_of_load:Union[str,int] = "best"
 
     def __post_init__(self):
         self.loss = nn.CrossEntropyLoss(reduction='none')
@@ -69,7 +80,9 @@ class CJB:
 
     def load_from_experiment(self,experiment_dir,device=None,set_data_path=None):
         self.experiment_files = ExperimentFiles(experiment_dir=experiment_dir)
-        results_ = self.experiment_files.load_results()
+
+        results_ = self.experiment_files.load_results(self.type_of_load,
+                                                      device=torch.device("cpu"))
         self.forward_rate = results_["model"]
         config_path_json = json.load(open(self.experiment_files.config_path, "r"))
 
@@ -97,6 +110,9 @@ class CJB:
             self.config.optimal_transport.reg = reg        
         self.op_sampler = OTPlanSampler(**asdict(self.config.optimal_transport))
 
+    def load_from_experiment_and_start_new():
+        return None
+    
     def start_new_experiment(self):
         #create directories
         self.experiment_files.create_directories()

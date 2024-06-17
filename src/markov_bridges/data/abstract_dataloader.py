@@ -136,7 +136,7 @@ class MarkovBridgeDataloader:
         size_left = sample_size
 
         for databatch in self.train():
-            batch_size = databatch.context_discrete.size(0)
+            batch_size = databatch.source_discrete.size(0)
             take_size = min(size_left, batch_size)
             
             safe_append(context_discrete, databatch.context_discrete[:take_size] if hasattr(databatch, 'context_discrete') else None)

@@ -11,6 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+from markov_bridges.models.metrics.metrics_utils import log_metrics
 
 @dataclass
 class TrainerState:
@@ -91,7 +92,6 @@ class Trainer(ABC):
         self.best_metric = np.inf
         self.dataloader = self.generative_model.dataloader
 
-
     @abstractmethod
     def train_step(self, current_model, databatch, number_of_training_step):
         """
@@ -165,31 +165,34 @@ class Trainer(ABC):
                     if self.config.trainer.debug:
                         break
 
-            # EVALUATES METRICS
-            #if self.config.trainer.save_model_metrics_stopping:
-            #    if epoch > self.config.trainer.save_model_metrics_warming:
-            #        all_metrics = log_metrics(self.generative_model, all_metrics=all_metrics, epoch="best",writer=self.writer)
+            # EVALUATES METRICS IF REQUIERED FOR STOPPING CRITERIA
+            if self.config.trainer.save_model_metrics_stopping:
+                if epoch > self.config.trainer.save_model_metrics_warming:
+                    all_metrics = log_metrics(self.generative_model, all_metrics=all_metrics, epoch="best",writer=self.writer)
 
             training_state.set_average_test_loss()
             results_,all_metrics = self.global_test(training_state,all_metrics,epoch)
 
             # STORING MODEL CHECKPOINTS
             if (epoch + 1) % self.config.trainer.save_model_epochs == 0:
-                results_ = self.save_results(training_state,epoch+1,checkpoint=True)
+                results_ = self.save_results(training_state,epoch+1,checkpoint=True,last_model=False)
+            
+            #STORE LAST MODEL
+            results_ = self.save_results(training_state,epoch+1,checkpoint=False,last_model=True)
 
             # SAVE RESULTS IF LOSS DECREASES IN VALIDATION NOT BY IMPROVED METRICS
             if not self.config.trainer.save_model_metrics_stopping:
                 current_average = training_state.average_test_loss if self.config.trainer.save_model_test_stopping else training_state.average_train_loss
                 if current_average < training_state.best_loss:
                     if self.config.trainer.warm_up_best_model_epoch < epoch or epoch == self.number_of_epochs - 1:
-                        results_ = self.save_results(training_state,epoch + 1,checkpoint=False)
+                        results_ = self.save_results(training_state,epoch + 1,checkpoint=False,last_model=False)
                     training_state.best_loss = training_state.average_test_loss
 
-            #SAVE RESULTS IF IT INCREASES METRICS
+            #SAVE RESULTS IF IT IMPROVES METRICS
             else:
                 if epoch > self.config.trainer.save_model_metrics_warming:
                     if all_metrics[self.config.trainer.metric_to_save] < self.best_metric:
-                        results_ = self.save_results(training_state, epoch + 1, checkpoint=False)
+                        results_ = self.save_results(training_state, epoch + 1, checkpoint=False,last_model=False)
                         self.best_metric = all_metrics[self.config.trainer.metric_to_save]
             training_state.finish_epoch()
 
@@ -199,7 +202,7 @@ class Trainer(ABC):
         experiment_dir = self.generative_model.experiment_files.experiment_dir
         if self.saved:
             self.generative_model = self.generative_model_class(experiment_dir=experiment_dir)
-        #all_metrics = log_metrics(self.generative_model, all_metrics=all_metrics, epoch="best", writer=self.writer)
+        all_metrics = log_metrics(self.generative_model,self.config.trainer.metrics, epoch="best",debug=False)
         self.writer.close()
 
         return results_,all_metrics
@@ -207,7 +210,8 @@ class Trainer(ABC):
     def save_results(self,
                      training_state:TrainerState,
                      epoch:int,
-                     checkpoint:bool=True):
+                     checkpoint:bool=True,
+                     last_model:bool=False):
         RESULTS = {
             "model": self.get_model(),
             "best_loss": training_state.best_loss,
@@ -217,6 +221,9 @@ class Trainer(ABC):
         }
         if checkpoint:
             best_model_path_checkpoint = self.generative_model.experiment_files.best_model_path_checkpoint.format(epoch)
+            torch.save(RESULTS,best_model_path_checkpoint)
+        if last_model:
+            best_model_path_checkpoint = self.generative_model.experiment_files.last_model
             torch.save(RESULTS,best_model_path_checkpoint)
         else:
             torch.save(RESULTS, self.generative_model.experiment_files.best_model_path)
