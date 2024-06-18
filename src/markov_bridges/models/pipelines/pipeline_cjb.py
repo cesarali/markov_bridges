@@ -8,6 +8,8 @@ from markov_bridges.data.utils import sample_from_dataloader_iterator
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
 
+from markov_bridges.utils.paralellism import nametuple_to_device
+
 from dataclasses import dataclass
 
 @dataclass
@@ -35,6 +37,10 @@ class CJBPipeline:
         From an initial sample of x_0 samples the data
         """
         x_f, x_hist, x0_hist, ts = TauLeapingCJB(self.config,self.rate_model,x_0,return_path=return_path)
+        x_hist = x_hist.to(self.device)
+        x0_hist = x0_hist.to(self.device)
+        ts = ts.to(self.device)
+
         # Return results based on flags
         if return_path or return_intermediaries:
             if return_origin:
@@ -64,9 +70,8 @@ class CJBPipeline:
                  t_path, time steps in temporal path
         """
         x_0 = self.dataloder.get_data_sample(sample_size,train=train)
+        x_0 = nametuple_to_device(x_0, self.device)
         return self.generate_sample(x_0,
                                     return_path=return_path,
                                     return_intermediaries=return_intermediaries,
                                     return_origin=return_origin)
-
-
