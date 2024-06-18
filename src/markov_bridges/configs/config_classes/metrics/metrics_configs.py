@@ -1,13 +1,16 @@
-
+from typing import Union
 from dataclasses import dataclass,asdict,field
 
 @dataclass
 class BasicMetricConfig:
-    name:str = "histogram_hellinger"
+    name:str = "basic_metrics_config"
 
     requieres_paths:bool = False
     requieres_origin:bool = False
     requieres_test_loop:bool = False
+
+    number_of_samples_to_gather:int|str = 0
+    compute_in_gpu:bool = False
 
 #================================================
 # MUSIC METRICS
@@ -28,7 +31,8 @@ class OutlierMetricConfig(BasicMetricConfig):
 @dataclass
 class MusicPlotConfig(BasicMetricConfig):
     name:str = "music_plot"
-
+    number_of_samples_to_gather:int = 10
+    requieres_origin:bool = True
 
 @dataclass
 class MetricsAvaliable:

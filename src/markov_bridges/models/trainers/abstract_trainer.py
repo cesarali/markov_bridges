@@ -4,14 +4,12 @@ from typing import Union,List
 from dataclasses import field,dataclass
 
 from abc import ABC, abstractmethod
-
-
 from tqdm import tqdm
-from torch.utils.tensorboard import SummaryWriter
 
+from torch.utils.tensorboard import SummaryWriter
 from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
-from markov_bridges.models.metrics.metrics_utils import log_metrics
+from markov_bridges.models.metrics.metrics_utils import LogMetrics
 
 @dataclass
 class TrainerState:
@@ -93,6 +91,10 @@ class Trainer(ABC):
         self.best_metric = np.inf
         self.dataloader = self.generative_model.dataloader
 
+        self.log_metrics = LogMetrics(self.generative_model,
+                                      metrics_configs_list=self.config.trainer.metrics,
+                            debug=True)
+    
     @abstractmethod
     def train_step(self, current_model, databatch, number_of_training_step):
         """
@@ -124,6 +126,10 @@ class Trainer(ABC):
         pass
 
     @abstractmethod
+    def paralellize_model(self):
+        pass
+
+    @abstractmethod
     def get_model(self):
         pass
 
@@ -144,8 +150,9 @@ class Trainer(ABC):
                                       number_of_training_steps=self.generative_model.config.trainer.number_of_training_steps,
                                       number_of_test_step=self.generative_model.config.trainer.number_of_test_step)
         
-        # model = torch.nn.dataparallel(self.generative_model)
-
+        if self.config.trainer.paralellize_gpu:
+            self.paralellize_model()
+            
         for epoch in self.tqdm_object:
             training_state.epoch = training_state.epoch + epoch
             #TRAINING
@@ -176,8 +183,8 @@ class Trainer(ABC):
             # EVALUATES METRICS IF REQUIERED FOR STOPPING CRITERIA
             if self.config.trainer.save_model_metrics_stopping:
                 if epoch > self.config.trainer.save_model_metrics_warming:
-                    all_metrics = log_metrics(self.generative_model, all_metrics=all_metrics, epoch="best",writer=self.writer)
-
+                    all_metrics = self.log_metrics(self.generative_model,epoch)
+                    
             training_state.set_average_test_loss()
             results_,all_metrics = self.global_test(training_state,all_metrics,epoch)
 
@@ -210,10 +217,8 @@ class Trainer(ABC):
         experiment_dir = self.generative_model.experiment_files.experiment_dir
         if self.saved:
             self.generative_model = self.generative_model_class(experiment_dir=experiment_dir)
-        all_metrics = log_metrics(self.generative_model,
-                                  self.config.trainer.metrics, 
-                                  epoch="best",
-                                  debug=self.config.trainer.debug)
+
+        all_metrics = self.log_metrics(self.generative_model,"best")
         self.writer.close()
 
         return results_,all_metrics

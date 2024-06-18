@@ -5,7 +5,6 @@ from  markov_bridges import data_path
 
 image_data_path = os.path.join(data_path,"raw")
 
-
 @dataclass
 class MarkovBridgeDataConfig:
     # variables model

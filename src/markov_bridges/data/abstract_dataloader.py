@@ -77,6 +77,14 @@ class MarkovBridgeDataset(Dataset):
 
 class MarkovBridgeDataloader:
     """
+    This is the dataloader class for the markov bridge models including:
+
+    Conditional Markov Bridge
+    Conditonal Mixed Bridges
+    Conditional Flow Matching
+
+    The dataloaders uses as 
+
     """
     def __init__(self):
         return None
@@ -162,6 +170,20 @@ class MarkovBridgeDataloader:
                                                   context_discrete, context_continuous)
         return aggregated_batch
     
+    def transform_to_native_shape(self):
+        """
+        Remember that all data needed by the generative models requiere shape
+        batch_size,dimensions
+
+        however, the data typically requieres being express in a different shape 
+        such as 
+
+        graphs: [batch_size,number_of_nodes,number_of_nodes]
+        images: [batch_size,number_of_channels,height,width]
+
+        this function should transform back to the requiered native shape
+        """
+        
     def repeat_interleave_data(sample, repeat_sample=0)->MarkovBridgeDataNameTuple:
         if repeat_sample > 0:
             source_discrete = sample.source_discrete.repeat_interleave(repeat_sample, dim=0) if sample.source_discrete is not None else None

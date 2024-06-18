@@ -12,6 +12,8 @@ from torch.nn.functional import softmax
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
+from markov_bridges.data.graphs_dataloader import GraphDataloader
+from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
 from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
 from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
 from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
@@ -35,7 +37,7 @@ class CJB:
     experiment_dir:str = None
 
     experiment_files: ExperimentFiles = None
-    dataloader: Union[MarkovBridgeDataloader] = None
+    dataloader: Union[MarkovBridgeDataloader|GraphDataloader|LankhPianoRollDataloader] = None
     forward_rate: Union[ClassificationForwardRate] = None
     op_sampler: OTPlanSampler = None
     pipeline:CJBPipeline = None

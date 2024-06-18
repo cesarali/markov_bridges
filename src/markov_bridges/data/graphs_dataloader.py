@@ -24,8 +24,9 @@ from markov_bridges.data.abstract_dataloader import (
     MarkovBridgeDataNameTuple
 )
 
-from markov_bridges.utils.graphs_utils import init_features, graphs_to_tensor
+from markov_bridges.utils.graphs_utils import graphs_to_tensor
 from markov_bridges.data.transforms import get_transforms,get_expected_shape
+
 
 class GraphDataloader(MarkovBridgeDataloader):
     """
@@ -44,6 +45,21 @@ class GraphDataloader(MarkovBridgeDataloader):
         self.transform_list,self.inverse_transform_list = get_transforms(graph_config)
         self.get_dataloaders()
 
+    def transform_to_native_shape(self,data):
+        data = self.inverse_transform_list(data)
+        return data
+    
+    def networkx_from_sample(self,data):
+        adj_matrices = self.inverse_transform_list(data)
+        # GET GRAPH FROM GENERATIVE MODEL
+        graph_list = []
+        number_of_graphs = adj_matrices.shape[0]
+        adj_matrices = adj_matrices.detach().cpu().numpy()
+        for graph_index in range(number_of_graphs):
+            graph_ = nx.from_numpy_array(adj_matrices[graph_index])
+            graph_list.append(graph_)
+        return graph_list
+    
     def get_dataloaders(self):
         """
         Creates the dataloaders

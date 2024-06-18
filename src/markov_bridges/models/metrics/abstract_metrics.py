@@ -3,9 +3,9 @@ import json
 from typing import List,Union
 
 from markov_bridges.models.generative_models.cjb import CJB
-from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
-from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
+from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple,MarkovBridgeDataClass
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.configs.config_classes.metrics.metrics_configs import BasicMetricConfig
 
 
@@ -24,7 +24,11 @@ class BasicMetric:
     name:str 
 
     def __init__(self,model:CJB,metrics_config:BasicMetricConfig):
+        self.metric_config = metrics_config
         self.name = metrics_config.name
+        self.compute_in_gpu = metrics_config.compute_in_gpu
+        self.number_of_samples_to_gather = metrics_config.number_of_samples_to_gather
+
         # context handling
         self.has_context_discrete = False
         if model.config.data.has_context_discrete:
@@ -37,14 +41,18 @@ class BasicMetric:
             self.metrics_file = model.experiment_files.metrics_file
             self.plots_path = model.experiment_files.plot_path
             self.has_experiment_files = True
+        else:
+            self.metrics_file = None
+            self.plots_path = None
+
 
     def batch_operation(self,databatch:MarkovBridgeDataNameTuple,generative_sample:CJBPipelineOutput):
         pass
 
-    def final_operation(self):
-        pass
+    def final_operation(self,all_metrics,samples_gather:MarkovBridgeDataClass,epoch=None):
+        return all_metrics
 
-    def save_metric(self,metrics_dict,epoch="last"):
+    def save_metric(self,metrics_dict,epoch="best"):
         if self.has_experiment_files:
             mse_metric_path = self.metrics_file.format(self.name + "_{0}_".format(epoch))
             with open(mse_metric_path, "w") as f:
