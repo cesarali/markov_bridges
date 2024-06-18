@@ -12,7 +12,8 @@ def plot_songs(original_sample,
                save_path="songs.png",
                repeating=True,
     ):
-    get_song_index = lambda song_index,repeat_sample,example_index:song_index*repeat_sample+example_index
+    if repeating:
+        get_song_index = lambda song_index,repeat_sample,example_index:song_index*repeat_sample+example_index
     prepare_song = lambda x,number_of_steps:x[:number_of_steps].cpu().numpy()
 
     fig, axs = plt.subplots(2, 3, figsize=(15, 5)) # Create a 2x3 grid of subplots
@@ -78,4 +79,5 @@ def plot_songs(original_sample,
     plt.tight_layout()
     if save_path is not None:
         plt.savefig(save_path)
-    plt.show()
+    else:
+        plt.show()

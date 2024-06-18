@@ -23,5 +23,8 @@ class MusicPlots(BasicMetric):
         target_discrete = samples_gather.target_discrete
         context_discrete = samples_gather.context_discrete
         original_sample = self.join_context(context_discrete,target_discrete)
-        plot_songs(original_sample,generative_sample)
+        if self.plots_path is not None:
+            plots_path = self.plots_path.format(self.name + "_{0}_".format(epoch))
+
+        plot_songs(original_sample,generative_sample,save_path=plots_path,repeating=False)
         return all_metrics

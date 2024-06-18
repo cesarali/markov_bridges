@@ -51,8 +51,28 @@ class CJBTrainer(Trainer):
                 self.dataloader = self.generative_model.dataloader
 
     def preprocess_data(self, databatch):
+        # Steps 1
+        person_dict = databatch._asdict()
+
+        # Step 2: Modify the dictionary dynamically
+        # Example modification: increment numerical values by 1
+        for key, value in person_dict.items():
+            if isinstance(value, int):  # Check if the value is an integer
+                person_dict[key] = value.to(self.device)
+
+        # Step 3: Convert back to namedtuple
+        # Get the namedtuple class/type of the original instance
+        NamedTuple = type(databatch)
+
+        # Create a new namedtuple instance with the modified values
+        databatch = NamedTuple(**person_dict)
+        
         return databatch
 
+    def paralellize_model(self):
+        #DARIO
+        self.generative_model.forward_rate
+        
     def get_model(self):
         return self.generative_model.forward_rate
 

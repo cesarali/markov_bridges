@@ -88,19 +88,20 @@ def get_transforms(config:GraphDataloaderGeometricConfig):
 
     :return: transform_list,inverse_transform_list
     """
-    if config.flatten:
-        if config.full_adjacency:
-            transform_list = [FlattenTransform]
-            inverse_transform_list = [UnFlattenTransform]
-        else:
-            transform_list = [ToUpperDiagonalIndicesTransform()]
-            inverse_transform_list = [FromUpperDiagonalTransform()]
+    if config.full_adjacency:
+        transform_list = [FlattenTransform]
+        inverse_transform_list = [UnFlattenTransform]
     else:
-        if config.full_adjacency:
-            transform_list = []
-            inverse_transform_list = []
-        else:  # no flatten no full adjacency
-            raise Exception("No Flatten and No Full Adjacency incompatible for data")
+        transform_list = [ToUpperDiagonalIndicesTransform()]
+        inverse_transform_list = [FromUpperDiagonalTransform()]
+    
+    #if config.flatten:
+    #else:
+    #    if config.full_adjacency:
+    #        transform_list = []
+    #        inverse_transform_list = []
+    #    else:  # no flatten no full adjacency
+    #       raise Exception("No Flatten and No Full Adjacency incompatible for data")
         
     transform_list = transforms.Compose(transform_list)
     inverse_transform_list = transforms.Compose(inverse_transform_list)

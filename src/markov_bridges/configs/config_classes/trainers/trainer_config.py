@@ -12,6 +12,7 @@ class BasicTrainerConfig:
     epoch:int = 0
     number_of_training_steps:int = 0
     number_of_test_step:int = 0
+    paralellize_gpu:bool = False
 
     number_of_epochs:int = 300
     log_loss:int = 100
