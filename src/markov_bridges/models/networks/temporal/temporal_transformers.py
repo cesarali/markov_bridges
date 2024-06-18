@@ -20,13 +20,11 @@ class PositionalEncoding(nn.Module):
     def __init__(self, device, d_model: int, dropout: float = 0.1, max_len: int = 5000):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout)
-
         position = torch.arange(max_len, device=device).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2, device=device) * (-math.log(10000.0) / d_model))
-        pe = torch.zeros(1, max_len, d_model, device=device)
-        pe[0, :, 0::2] = torch.sin(position * div_term)
-        pe[0, :, 1::2] = torch.cos(position * div_term)
-        self.pe = pe
+        self.pe = torch.zeros(1, max_len, d_model, device=device)
+        self.pe[0, :, 0::2] = torch.sin(position * div_term)
+        self.pe[0, :, 1::2] = torch.cos(position * div_term)
 
     def forward(self, x: TensorType["B", "L", "K"]
                 ) -> TensorType["B", "L", "K"]:
@@ -34,6 +32,7 @@ class PositionalEncoding(nn.Module):
         Args:
             x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
+        self.pe = self.pe.to(x.device)
         x = x + self.pe[:, 0:x.size(1), :]
         return self.dropout(x)
 
@@ -211,6 +210,7 @@ class SequenceTransformer(nn.Module):
         #else:
         self.net = tmp_net
         self.expected_output_shape = [256, 129]
+        self.to(device)
 
     def forward(self,
         x: TensorType["B", "D"],
