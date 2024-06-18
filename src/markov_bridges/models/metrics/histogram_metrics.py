@@ -53,14 +53,18 @@ class HellingerMetric(BasicMetric):
             original_sample = batch.target_discrete
             noise_sample = batch.source_discrete
 
-        # reshapce for one hot
+        # reshape for one hot
+        noise_sample = noise_sample.detach().cpu()
+        original_sample = original_sample.detach().cpu()
+        generative_sample = generative_sample.raw_sample.detach().cpu()
+
         noise_sample = noise_sample.reshape(-1)
         original_sample = original_sample.reshape(-1)
-        raw_sample = generative_sample.raw_sample.reshape(-1)
+        generative_sample = generative_sample.reshape(-1)
 
         # obtain one hot
         noise_histogram = F.one_hot(noise_sample.long(), num_classes=self.vocab_size)
-        generative_histogram = F.one_hot(raw_sample.long(), num_classes=self.vocab_size)
+        generative_histogram = F.one_hot(generative_sample.long(), num_classes=self.vocab_size)
         original_histogram = F.one_hot(original_sample.long(),  num_classes=self.vocab_size)
 
         # reshape for batches
@@ -73,7 +77,7 @@ class HellingerMetric(BasicMetric):
         self.generative_histogram += generative_histogram.sum(axis=0)
         self.real_histogram += original_histogram.sum(axis=0)
         
-    def final_operation(self,epoch=None):
+    def final_operation(self,all_metrics,samples_bags,epoch=None):
         #aggregates statistics
         self.noise_histogram = self.noise_histogram/self.sample_size
         self.generative_histogram = self.generative_histogram/self.sample_size
@@ -81,7 +85,6 @@ class HellingerMetric(BasicMetric):
 
         #calculates distance
         hd = self.hellinger_distance(self.generative_histogram,self.real_histogram)
-
         metrics_dict = {self.name:hd.item()}
 
         # Plots
@@ -96,12 +99,16 @@ class HellingerMetric(BasicMetric):
                 plot_path = self.plots_path.format("binary_histograms_{0}".format(epoch))
             plot_marginals_binary_histograms(histograms,plot_path)
 
+        # Non binary plot
         if self.plot_histogram:
             pass
 
         if epoch is not None:
             self.save_metric(metrics_dict,epoch)
 
+        all_metrics.update(metrics_dict)
+        return all_metrics
+    
     def hellinger_distance(self,hist1,hist2):
         # Compute the square root of each bin
         sqrt_hist1 = torch.sqrt(hist1)

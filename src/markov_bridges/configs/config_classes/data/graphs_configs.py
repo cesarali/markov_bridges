@@ -2,7 +2,6 @@ import os
 from conditional_rate_matching import data_path
 from dataclasses import dataclass,asdict,field
 from typing import List, Union, Optional, Tuple, Dict
-from conditional_rate_matching.configs.utils import expected_shape
 from markov_bridges.configs.config_classes.data.basics_configs import MarkovBridgeDataConfig
 
 graph_data_path = os.path.join(data_path,"raw","graph")
@@ -38,7 +37,6 @@ class GraphDataloaderGeometricConfig(MarkovBridgeDataConfig):
     max_test_size:int=None
 
     temporal_net_expected_shape : List[int] = None
-    preprocess_datapath:str = "orca_berlin"
     data_min_max: List[float] = field(default_factory=lambda:[0.,1.])
 
 

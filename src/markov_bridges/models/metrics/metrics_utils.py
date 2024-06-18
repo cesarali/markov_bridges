@@ -1,37 +1,109 @@
 import torch
 from typing import Union,List
+from dataclasses import dataclass
 
 from markov_bridges.models.generative_models.cjb import CJB
-
+from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
+from markov_bridges.models.metrics.abstract_metrics import BasicMetric
+from markov_bridges.models.metrics.music_metrics import MusicPlots
+from markov_bridges.models.metrics.histogram_metrics import HellingerMetric
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
 from markov_bridges.configs.config_classes.metrics.metrics_configs import(
+    BasicMetricConfig,
     MusicPlotConfig,
     HellingerMetricConfig,
     metrics_config
 )
 
-from markov_bridges.models.metrics.histogram_metrics import HellingerMetric
+class GatherSamples:
+    """
+    List to gather the values from the sample
 
-def load_metric(cjb:CJB,metric_config:Union[str]):
+    """
+    def __init__(self) -> None:
+        self.context_discrete: List[torch.tensor] = []    
+        self.context_continuous: List[torch.tensor] = []
+
+        self.target_discrete: List[torch.tensor] = []
+        self.target_continuous: List[torch.tensor] = []
+
+        self.raw_sample:List[torch.tensor] = []
+
+    def gather(self,generative_sample:CJBPipelineOutput,remaining_samples:int):
+        # how much to take
+        raw_sample = generative_sample.raw_sample
+        batch_size = raw_sample.size(0)
+        take_size = min(remaining_samples,batch_size)
+
+        # Initialize variables to None
+        context_discrete = None
+        context_continuous = None
+        target_discrete = None
+        target_continuous = None
+
+        # Check for attributes and assign values if they exist
+        if hasattr(generative_sample.x_0, 'context_discrete'):
+            context_discrete = generative_sample.x_0.context_discrete[:take_size]
+        if hasattr(generative_sample.x_0, 'context_continuous'):
+            context_continuous = generative_sample.x_0.context_continuous[:take_size]
+        if hasattr(generative_sample.x_0, 'target_discrete'):
+            target_discrete = generative_sample.x_0.target_discrete[:take_size]
+        if hasattr(generative_sample.x_0, 'target_continuous'):
+            target_continuous = generative_sample.x_0.target_continuous[:take_size]
+
+        raw_sample = generative_sample.raw_sample[:take_size]
+
+        # Append to lists only if they are not None
+        if context_discrete is not None:
+            self.context_discrete.append(context_discrete)
+        if context_continuous is not None:
+            self.context_continuous.append(context_continuous)
+        if target_discrete is not None:
+            self.target_discrete.append(target_discrete)
+        if target_continuous is not None:
+            self.target_continuous.append(target_continuous)
+
+        self.raw_sample.append(raw_sample)
+        remaining_samples = remaining_samples - take_size
+
+        return remaining_samples
+    
+    def concatenate_bags(self):
+        if len(self.context_discrete) > 0:
+            self.context_discrete = torch.cat(self.context_discrete,axis=0) 
+        if len(self.context_continuous) > 0:
+            self.context_continuous = torch.cat(self.context_continuous,axis=0) 
+        if len(self.target_discrete) > 0:
+            self.target_discrete = torch.cat(self.target_discrete,axis=0) 
+        if len(self.target_continuous) > 0:
+            self.target_continuous = torch.cat(self.target_continuous,axis=0)
+        if len(self.raw_sample) > 0:
+            self.raw_sample = torch.cat(self.raw_sample,axis=0)
+
+def load_metric(cjb:CJB,metric_config:Union[str,BasicMetricConfig]):
     # Metrics can be passed as simple strings or with the full ConfigClass
     # here we ensure the metric is a config before defining the class
     if isinstance(metric_config,str):
         metric_config = metrics_config[metric_config]()
     if isinstance(metric_config,HellingerMetricConfig):
         metric = HellingerMetric(cjb,metric_config)
+    elif isinstance(metric_config,MusicPlotConfig):
+        metric = MusicPlots(cjb,metric_config)
+
     return metric
 
-def obtain_metrics_stats(model_config:CJBConfig,metrics_configs_list):
+def obtain_metrics_stats(model_config:CJBConfig,metrics_configs_list:List[BasicMetricConfig]):
     """
     if at least one metric requieres paths, we store the paths in the pipeline output, same with 
     origin say in the case of completion metrics
     """
+    number_of_samples_to_gather = 0
     for metric_config in metrics_configs_list:
         return_path = False
         return_origin = False
         requieres_test_loop = False
-
+        
         if isinstance(metric_config,str):
             metric_config = metrics_config[metric_config]
     
@@ -41,8 +113,15 @@ def obtain_metrics_stats(model_config:CJBConfig,metrics_configs_list):
             return_origin = True
         if metric_config.requieres_test_loop:
             requieres_test_loop = True
+        
+        # for metrics that requiere aggregates (such as plots or graph metrics) defines the maximum number of samples requiered
+        if isinstance(metric_config.number_of_samples_to_gather,int):
+            if isinstance(number_of_samples_to_gather,int):
+                number_of_samples_to_gather = max(metric_config.number_of_samples_to_gather,number_of_samples_to_gather)
+        if isinstance(metric_config.number_of_samples_to_gather,str):
+            number_of_samples_to_gather = "all"
 
-    return return_path,return_origin,requieres_test_loop
+    return return_path,return_origin,requieres_test_loop,number_of_samples_to_gather
 
 def log_metrics(model:CJB,metrics_configs_list,epoch=None,debug=False):
     """
@@ -52,6 +131,8 @@ def log_metrics(model:CJB,metrics_configs_list,epoch=None,debug=False):
     test set and calculate say hellinger distance, this means that each metric must perform and operation during 
     each test set batch and then a final operation after the statistics are gathered.
     """
+
+
     # Define List of Metrics
     metrics  = []
     for metric_config in metrics_configs_list:
@@ -59,7 +140,7 @@ def log_metrics(model:CJB,metrics_configs_list,epoch=None,debug=False):
         metrics.append(metric)
     
     # Obtain What To Do
-    return_path,return_origin,requieres_test_loop = obtain_metrics_stats(model.config,metrics_configs_list)
+    return_path,return_origin,requieres_test_loop,number_of_samples_to_gather = obtain_metrics_stats(model.config,metrics_configs_list)
 
     # For each batch in the test set applies the operation requiered for the metrics using that batch
     for databatch in model.dataloader.test():
@@ -75,3 +156,124 @@ def log_metrics(model:CJB,metrics_configs_list,epoch=None,debug=False):
     # Do Final Operation Per Metric
     for metric in metrics:
         metric.final_operation(epoch)
+
+class LogMetrics:
+    """
+    In order to obtain metrics one is usually requiered to generate a sample of the size of the test set
+    and obtain statistics for both the test set as well as the whole generated samples and perform distances
+    e.g. one requieres the histograms of a generated sampled of size of test set and then a histogram of the 
+    test set and calculate say hellinger distance, this means that each metric must perform and operation during 
+    each test set batch and then a final operation after the statistics are gathered.
+
+    """
+    metrics:List[BasicMetric]
+
+    def __init__(self,model:CJB,
+                 metrics_configs_list:List[BasicMetricConfig|str],
+                 debug=False) -> None:
+        
+        self.samples_bag = None
+        self.define_metrics(model,metrics_configs_list)
+        self.define_metrics_stats()
+        self.debug = debug
+
+    def define_metrics(self,model,metrics_configs_list):
+        """
+        Initialize each of the metrics classes as specified in 
+        the metrics list
+        """
+        # Define List of Metrics
+        self.metrics  = []
+        for metric_config in metrics_configs_list:
+            metric = load_metric(model,metric_config)
+            self.metrics.append(metric)
+
+    def define_metrics_stats(self):
+        """
+        If at least one metric requieres paths, we store the paths in the pipeline output, same with 
+        origin say in the case of completion metrics
+        """
+        self.number_of_samples_to_gather = 0
+                
+        self.return_path = False
+        self.return_origin = False
+        self.requieres_test_loop = False
+        for metric in self.metrics:
+            metric_config = metric.metric_config
+            metric_config:BasicMetricConfig
+
+            if metric_config.requieres_paths:
+                self.return_path = True
+            if metric_config.requieres_origin:
+                self.return_origin = True
+            if metric_config.requieres_test_loop:
+                self.requieres_test_loop = True
+            
+            # for metrics that requiere aggregates (such as plots or graph metrics) defines the maximum number of samples requiered
+            if isinstance(metric_config.number_of_samples_to_gather,int):
+                if isinstance(self.number_of_samples_to_gather,int):
+                    self.number_of_samples_to_gather = max(metric_config.number_of_samples_to_gather,self.number_of_samples_to_gather)
+            if isinstance(metric_config.number_of_samples_to_gather,str):
+                self.number_of_samples_to_gather = "all"
+
+        if self.number_of_samples_to_gather != 0:
+            self.samples_bag = GatherSamples()
+
+    def __call__(self, model:CJB,epoch=None):
+        """
+        """
+        # dict to gather and return all calculated metrics
+        all_metrics = {}
+
+        # keeps track of how many samples one needs to gather
+        remaining_samples = None
+        if self.number_of_samples_to_gather != 0:
+            if isinstance(self.number_of_samples_to_gather,int):
+                remaining_samples = self.number_of_samples_to_gather
+
+        # For each batch in the test set applies the operation requiered for the metrics using that batch
+        for databatch in model.dataloader.test():
+            generative_sample = model.pipeline.generate_sample(databatch,
+                                                               return_path=self.return_path,
+                                                               return_origin=self.return_origin)
+            
+            # perform the batch operation for each metric
+            for metric in self.metrics:
+                if metric.batch_operation:
+                    metric.batch_operation(databatch,generative_sample)
+
+            # gather sample
+            remaining_samples = self.gather_samples(generative_sample,remaining_samples)
+
+            if self.debug:
+                break
+            
+        # concatenate the samples
+        if self.samples_bag is not None:
+            self.samples_bag.concatenate_bags()
+
+        # Do Final Operation Per Metric
+        for metric in self.metrics:
+            all_metrics = metric.final_operation(all_metrics,self.samples_bag,epoch)
+        
+        return all_metrics
+    
+    def gather_samples(self,
+                       generative_sample:CJBPipelineOutput,
+                       remaining_samples:int):
+        """
+        for metrics that requiered aggregated samples we gather 
+        the samples in a list, the gathering is done to the 
+        maximum number from the whole list of metrics.
+
+        metrics are gathered in self.samples_bag
+        """
+        if self.number_of_samples_to_gather != 0:
+            if isinstance(self.number_of_samples_to_gather,int):
+                remaining_samples = self.samples_bag.gather(generative_sample,remaining_samples)
+                if remaining_samples == 0:
+                    self.number_of_samples_to_gather = 0
+            else:
+                self.samples_bag.gather(generative_sample)
+
+        return remaining_samples

@@ -10,7 +10,8 @@ import pytest
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.configs.config_classes.metrics.metrics_configs import (
     MetricsAvaliable,
-    HellingerMetricConfig
+    HellingerMetricConfig,
+    MusicPlotConfig
 )
 
 # models
@@ -32,7 +33,9 @@ def conditional_music_experiment(number_of_epochs=3)->CJBConfig:
     experiment_config.trainer.warm_up = 5  #CHANGE
     experiment_config.trainer.learning_rate = 1e-4
     # metrics
-    experiment_config.trainer.metrics = [HellingerMetricConfig()]
+    experiment_config.trainer.metrics = [HellingerMetricConfig(),
+                                         MusicPlotConfig()]
+    
     
     return experiment_config
 
@@ -41,14 +44,14 @@ def continue_music_experiment(experiment_dir):
     experiment_files = ExperimentFiles(experiment_name="cjb",
                                        experiment_type="music")    
     
-    trainer = CJBTrainer(experiment_files=experiment_files,
-                         experiment_dir=experiment_dir,
+    trainer = CJBTrainer(experiment_files=experiment_files, # experiment files of new experiment
+                         experiment_dir=experiment_dir, # experiment dir of experiment to start with
                          starting_type="last") # WHERE TO START last IS LAST RECORDED MODEL
     trainer.train()
 
 
 if __name__=="__main__":
-    start = False # START NEW EXPERIMENT
+    start = True # START NEW EXPERIMENT
     if start:
         experiment_config = conditional_music_experiment(number_of_epochs=3)
         experiment_config.trainer.debug = True # CHANGE
