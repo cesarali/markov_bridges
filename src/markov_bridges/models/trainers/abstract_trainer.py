@@ -146,6 +146,8 @@ class Trainer(ABC):
                                       number_of_training_steps=self.generative_model.config.trainer.number_of_training_steps,
                                       number_of_test_step=self.generative_model.config.trainer.number_of_test_step)
         
+        # model = torch.nn.dataparallel(self.generative_model)
+
         for epoch in self.tqdm_object:
             training_state.epoch = training_state.epoch + epoch
             #TRAINING

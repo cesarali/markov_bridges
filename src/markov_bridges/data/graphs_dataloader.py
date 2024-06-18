@@ -24,7 +24,7 @@ from markov_bridges.data.abstract_dataloader import (
     MarkovBridgeDataNameTuple
 )
 
-from markov_bridges.utils.graphs_utils import graphs_to_tensor
+from markov_bridges.utils.graphs_utils import init_features, graphs_to_tensor
 from markov_bridges.data.transforms import get_transforms,get_expected_shape
 
 class GraphDataloader(MarkovBridgeDataloader):

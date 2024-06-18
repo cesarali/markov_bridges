@@ -1,7 +1,7 @@
 import os
 from typing import List
 from dataclasses import dataclass,asdict,field
-from markov_bridges import data_path
+from  markov_bridges import data_path
 
 image_data_path = os.path.join(data_path,"raw")
 
