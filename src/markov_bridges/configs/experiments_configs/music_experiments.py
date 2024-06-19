@@ -55,7 +55,7 @@ if __name__=="__main__":
     if start:
         experiment_config = conditional_music_experiment(number_of_epochs=3)
         experiment_config.trainer.debug = True # CHANGE
-
+        experiment_config.trainer.device = "cuda:0"
         experiment_files = ExperimentFiles(experiment_name="cjb",
                                            experiment_type="music")    
         
