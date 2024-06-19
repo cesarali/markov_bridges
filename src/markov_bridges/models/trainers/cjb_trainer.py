@@ -180,18 +180,19 @@ class CJBTrainer(Trainer):
                 g['lr'] = self.lr * np.minimum(float(number_of_training_step) / self.config.trainer.warm_up, 1.0)
 
         self.optimizer.step()
+        if self.config.trainer.warm_up > 0:
+            if number_of_training_step > self.config.trainer.warm_up:
+                # Update the learning rate scheduler based on its type
+                if self.config.trainer.scheduler in ["step", "multi", "exponential"]:
+                    self.scheduler.step()
+                elif self.config.trainer.scheduler == "reduce":
+                    self.scheduler.step(loss)
 
-        # Update the learning rate scheduler based on its type
-        if self.config.trainer.scheduler in ["step", "multi", "exponential"]:
-            self.scheduler.step()
-        elif self.config.trainer.scheduler == "reduce":
-            self.scheduler.step(loss)
+                if self.do_ema:
+                    self.generative_model.forward_rate.update_ema()
 
-        if self.do_ema:
-            self.generative_model.forward_rate.update_ema()
-
-        if self.config.trainer.lr_decay:
-            self.scheduler.step()
+                if self.config.trainer.lr_decay:
+                    self.scheduler.step()
 
         self.writer.add_scalar('training loss', loss.item(), number_of_training_step)
         return loss
