@@ -35,13 +35,20 @@ class MusicPlotConfig(BasicMetricConfig):
     requieres_origin:bool = True
 
 @dataclass
+class GraphMetricsConfig(BasicMetricConfig):
+    name: str = "graphs_metrics"
+    number_of_samples_to_gather: str = "all"
+    requieres_origin:bool = True
+    plot_graphs: bool = False
+    methods: list[str] = field(default_factory=lambda: ["degree", "cluster", "orbit"])
+
+@dataclass
 class MetricsAvaliable:
     histogram_hellinger:str = "histogram_hellinger"
-    outlier:str = "outlier"
     music_plot:str = "music_plot"
 
 metrics_config = {
     "histogram_hellinger":HellingerMetricConfig,
-    "outlier":OutlierMetricConfig,
     "music_plot":MusicPlotConfig,
+    "graphs_metrics":GraphMetricsConfig,
 }

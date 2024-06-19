@@ -11,14 +11,15 @@ import numpy as np
 from torch.nn.functional import softmax
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
-from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
+from markov_bridges.data.utils import get_dataloaders
 from markov_bridges.data.graphs_dataloader import GraphDataloader
-from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
 from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
 from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
+from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
+from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
 from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
-from markov_bridges.data.utils import get_dataloaders
+
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
 @dataclass
@@ -26,12 +27,13 @@ class CJB:
     """
     This class contains all elements to sample and train a conditional jump bridge model
     
-    if DEVICE is not provided it is obtained from the trainers config 
+    if DEVICE is not provided it is obtained from the trainer config 
 
     the actual torch model that contains the networks for sampling is specified in forward rate
     and contains all the mathematical elements.
 
-    the experiment folder is created in experiment files and 
+    the experiment folder is created in experiment files and has to be provided by hand, 
+    currently it is passed to the model by the trainer, it is only needed during training
     """
     config: CJBConfig = None
     experiment_dir:str = None
@@ -121,9 +123,6 @@ class CJB:
         self.op_sampler = OTPlanSampler(**asdict(self.config.optimal_transport))
 
         return epoch,number_of_training_steps,number_of_test_step
-    
-    def load_from_experiment_and_start_new():
-        return None
     
     def start_new_experiment(self):
         #create directories

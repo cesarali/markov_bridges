@@ -36,14 +36,12 @@ def conditional_music_experiment(number_of_epochs=3)->CJBConfig:
     experiment_config.trainer.metrics = [HellingerMetricConfig(),
                                          MusicPlotConfig()]
     
-    
     return experiment_config
 
 
 def continue_music_experiment(experiment_dir):
     experiment_files = ExperimentFiles(experiment_name="cjb",
                                        experiment_type="music")    
-    
     trainer = CJBTrainer(experiment_files=experiment_files, # experiment files of new experiment
                          experiment_dir=experiment_dir, # experiment dir of experiment to start with
                          starting_type="last") # WHERE TO START last IS LAST RECORDED MODEL
@@ -58,10 +56,10 @@ if __name__=="__main__":
 
         experiment_files = ExperimentFiles(experiment_name="cjb",
                                            experiment_type="music")    
-        
         trainer = CJBTrainer(config=experiment_config,
                              experiment_files=experiment_files)
         trainer.train()
+
     else: # CONTINUE EXPERIMENT FROM 
         # experiment dir is the experiment from were to start again
         experiment_dir = r"C:\Users\cesar\Desktop\Projects\DiffusiveGenerativeModelling\OurCodes\markov_bridges\results\cjb\music\1718621212"
