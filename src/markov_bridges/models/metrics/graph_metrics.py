@@ -16,6 +16,8 @@ from markov_bridges.models.metrics.mmd import (
     process_tensor,
 )
 
+from markov_bridges.utils.plots.graphs_plots import plot_graphs_list
+
 PRINT_TIME = True
 
 """
@@ -396,8 +398,15 @@ class GraphsMetrics(BasicMetric):
         generative_graphs = self.networkx_from_sample(generative_sample)
         target_graphs = self.networkx_from_sample(target_discrete)
 
-        if self.plots_path is not None:
-            plots_path = self.plots_path.format(self.name + "_plots_{0}_".format(epoch))
+        if self.plot_graphs:
+            if self.plots_path is not None:
+                plots_path_generative = self.plots_path.format(self.name + "_generative_{0}_".format(epoch))
+                plots_path_original = self.plots_path.format(self.name + "_original_{0}_".format(epoch))
+            else:
+                plots_path_generative = None
+                plots_path_original = None
+            plot_graphs_list(generative_graphs,title="Generative",save_dir=plots_path_generative)
+            plot_graphs_list(target_graphs,title="Original",save_dir=plots_path_original)
 
         all_metrics = eval_graph_list(target_graphs, generative_graphs, methods=self.methods, windows=self.windows)
         return all_metrics
