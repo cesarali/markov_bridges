@@ -21,14 +21,10 @@ PRINT_TIME = True
 """
 g++ -O2 -std=c++11 -o orca_berlin orca_berlin.cpp -static-libstdc++ -static-libgcc
 """
-from conditional_rate_matching import project_path
 
-project_path = Path(project_path)
+from markov_bridges import orca_path
 
-ORCA_DIR_STANDARD = project_path / "src" / "conditional_rate_matching" / "models" / "metrics" / "orca"
-ORCA_DIR_BERLIN = project_path / "src" / "conditional_rate_matching" / "models" / "metrics" / "orca_berlin"
-ORCA_DIR_NJ = project_path / "src" / "conditional_rate_matching" / "models" / "metrics" / "orca_new_jersey"
-
+ORCA_DIR_STANDARD = orca_path
 
 def read_orbit_counts(file_path):
     """
@@ -221,13 +217,7 @@ def edge_list_reindexed(G):
 
 
 def orca(graph, windows=True, orca_dir=None):
-    if orca_dir is None:
-        if windows:
-            ORCA_DIR = ORCA_DIR_BERLIN
-        else:
-            ORCA_DIR = ORCA_DIR_NJ
-    else:
-        ORCA_DIR = Path(orca_dir)
+    ORCA_DIR = Path(orca_dir)
 
     tmp_input_path = ORCA_DIR / "tmp.txt"
     f = open(tmp_input_path, "w")
@@ -239,7 +229,6 @@ def orca(graph, windows=True, orca_dir=None):
     if windows:
         command = "orca.exe  4 ./tmp.txt tmp.out"
         result = sp.run(command, shell=True, cwd=ORCA_DIR, stdout=sp.PIPE, stderr=sp.PIPE)
-
     else:
         command = "./orca  4 ./tmp.txt tmp.out"
         result = sp.run(command, shell=True, cwd=ORCA_DIR, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -395,6 +384,7 @@ class GraphsMetrics(BasicMetric):
         self.networkx_from_sample = model.dataloader.networkx_from_sample
         self.plot_graphs = metrics_config.plot_graphs
         self.methods = metrics_config.methods
+        self.windows = metrics_config.windows
 
     def batch_operation(self, databatch: MarkovBridgeDataNameTuple, generative_sample: CJBPipelineOutput):
         pass
@@ -409,7 +399,7 @@ class GraphsMetrics(BasicMetric):
         if self.plots_path is not None:
             plots_path = self.plots_path.format(self.name + "_plots_{0}_".format(epoch))
 
-        all_metrics = eval_graph_list(target_graphs, generative_graphs, methods=self.methods)
+        all_metrics = eval_graph_list(target_graphs, generative_graphs, methods=self.methods, windows=self.windows)
         return all_metrics
 
 
@@ -418,10 +408,9 @@ if __name__=="__main__":
     from pprint import pprint
 
     graph = nx.barabasi_albert_graph(200, 3)
-    graph_list_1 = [nx.barabasi_albert_graph(200,3) for i in range(2)]
-    graph_list_2 = [nx.barabasi_albert_graph(200,3) for i in range(2)]
+    graph_list_1 = [nx.barabasi_albert_graph(200,3) for i in range(10)]
+    graph_list_2 = [nx.barabasi_albert_graph(200,3) for i in range(10)]
 
-    orca_dir = ORCA_DIR_BERLIN
     #node_orbit_counts = orca(graph_list_1[0])
-    results_ = eval_graph_list(graph_list_1, graph_list_2,methods=None,windows=True,orca_dir=ORCA_DIR_BERLIN)
+    results_ = eval_graph_list(graph_list_1, graph_list_2,methods=["orbit"],windows=True,orca_dir=orca_path)
     print(results_)

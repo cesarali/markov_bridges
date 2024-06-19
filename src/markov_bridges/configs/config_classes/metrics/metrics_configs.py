@@ -40,6 +40,7 @@ class GraphMetricsConfig(BasicMetricConfig):
     number_of_samples_to_gather: str = "all"
     requieres_origin:bool = True
     plot_graphs: bool = False
+    windows:bool = False
     methods: list[str] = field(default_factory=lambda: ["degree", "cluster", "orbit"])
 
 @dataclass

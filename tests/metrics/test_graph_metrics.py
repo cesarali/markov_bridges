@@ -26,7 +26,7 @@ def test_metrics_log():
     experiment_config = get_graph_experiment()
     cjb = CJB(experiment_config)
 
-    log_metrics = LogMetrics(cjb,[GraphMetricsConfig(methods=["degree"])])
+    log_metrics = LogMetrics(cjb,[GraphMetricsConfig(methods=["orbit"],windows=True)])
     all_metrics = log_metrics(cjb,None)
 
     print(all_metrics)
