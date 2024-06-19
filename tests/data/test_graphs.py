@@ -11,6 +11,15 @@ def test_load_graph():
     print(databatch.source_discrete.shape)
     print(databatch.target_discrete.shape)
 
+def test_load_networkx():
+    data_config = CommunitySmallGConfig()
+    dataloader = GraphDataloader(data_config)
+    databatch = dataloader.get_databatch()
+
+    data = dataloader.transform_to_native_shape(databatch)
+    target_graphs = dataloader.networkx_from_sample(data.target_discrete)
+    print(target_graphs[0])
+    
 if __name__=="__main__":
-    test_load_graph()
+    test_load_networkx()
     

@@ -42,6 +42,23 @@ class MarkovBridgeDataClass:
     target_discrete: torch.tensor = None
     target_continuous: torch.tensor = None
     
+    context_discrete_dimension:int = None
+    context_continuous_dimension:int = None
+    discrete_dimension:int = None
+    continuous_dimension:int = None
+
+    def __post_init__(self):
+        """
+        We ensure that data is always saved [batch_size,dimensions]
+        """
+        fields = ['context_discrete', 'context_continuous', 'source_discrete', 'source_continuous', 'target_discrete', 'target_continuous']
+        for field_name in fields:
+            tensor = getattr(self, field_name)
+            if tensor is not None:
+                batch_size = tensor.shape[0]
+                new_shape = (batch_size, -1)
+                setattr(self, field_name, tensor.view(new_shape))
+
 class MarkovBridgeDataset(Dataset):
     """
     Custom Dataset class for MarkovBridge models.
@@ -77,14 +94,33 @@ class MarkovBridgeDataset(Dataset):
 
 class MarkovBridgeDataloader:
     """
-    This is the dataloader class for the markov bridge models including:
+    This is the abstract dataloader class for the markov bridge models including:
 
     Conditional Markov Bridge
     Conditonal Mixed Bridges
     Conditional Flow Matching
 
-    The dataloaders uses as 
+    Data should be stored in MarkovBridgeDataset as a MarkovBridgeDataClass
+    
+    ALL DATA SHOULD BE STORE IN SHAPE
+    [data_size,dimensions]
 
+    The MarkovBridgeDataset uses MarkovBridgeDataClass as a way of storing the whole data
+    this deafults to None the non provided aspects of the data.
+
+    The dataloaders uses a **namedtuple** for handling  the data in the batches,
+    this named tuple changes if the data set in fact does not provide some elements 
+    like context or continous variables, this such that we avoid a batch of
+    nan tensors. 
+
+    This behavior is different from the MarkovBridgeDataClass who defaults to None for 
+    the things not provided.
+
+    MarkovBridgeDataNameTuple is the named tuple with all possible datavalues, but this changes 
+    for each dataset.
+
+    source denotes the distribution at time = 0 
+    target denotes the distribution at time = 1
     """
     def __init__(self):
         return None
@@ -96,6 +132,17 @@ class MarkovBridgeDataloader:
         return None
     
     def get_data_divisions(self)->MarkovBridgeDataClass:
+        """
+        This class is supposed to organize the data in the different elements once 
+        target and source are either read or simulated, i.e. it defines this elements
+
+        context_discrete: torch.tensor    
+        context_continuous: torch.tensor
+        source_discrete: torch.tensor
+        source_continuous: torch.tensor
+        target_discrete: torch.tensor
+        target_continuous: torch.tensor
+        """
         return None
     
     def get_databatch(self,train=True)->MarkovBridgeDataNameTuple:
@@ -113,7 +160,7 @@ class MarkovBridgeDataloader:
     
     def get_data_sample(self,sample_size:int,train:bool=True)->MarkovBridgeDataNameTuple:
         """
-        Samples data from the dataloader until the sample_size is met.
+        Aggregates data from the dataloader until the sample_size is met.
 
         Args:
             dataloader_iterator (Iterator): The dataloader iterator to sample from.
@@ -128,8 +175,12 @@ class MarkovBridgeDataloader:
                        "source_discrete source_continuous 
                         target_discrete target_continuous 
                         context_discrete context_continuous")
-
         """
+        if train:
+            dataloader_iterator = self.train()
+        else:
+            dataloader_iterator = self.test()
+        
         def safe_append(tensor_list, tensor):
             if tensor is not None:
                 tensor_list.append(tensor)
@@ -143,7 +194,7 @@ class MarkovBridgeDataloader:
 
         size_left = sample_size
 
-        for databatch in self.train():
+        for databatch in dataloader_iterator:
             batch_size = databatch.source_discrete.size(0)
             take_size = min(size_left, batch_size)
             
@@ -170,7 +221,7 @@ class MarkovBridgeDataloader:
                                                   context_discrete, context_continuous)
         return aggregated_batch
     
-    def transform_to_native_shape(self):
+    def transform_to_native_shape(self)->MarkovBridgeDataNameTuple:
         """
         Remember that all data needed by the generative models requiere shape
         batch_size,dimensions
@@ -183,6 +234,7 @@ class MarkovBridgeDataloader:
 
         this function should transform back to the requiered native shape
         """
+        pass
         
     def repeat_interleave_data(sample, repeat_sample=0)->MarkovBridgeDataNameTuple:
         if repeat_sample > 0:

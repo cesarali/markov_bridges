@@ -16,19 +16,17 @@ from markov_bridges.models.metrics.mmd import (
     process_tensor,
 )
 
+from markov_bridges.utils.plots.graphs_plots import plot_graphs_list
+
 PRINT_TIME = True
 
 """
 g++ -O2 -std=c++11 -o orca_berlin orca_berlin.cpp -static-libstdc++ -static-libgcc
 """
-from conditional_rate_matching import project_path
 
-project_path = Path(project_path)
+from markov_bridges import orca_path
 
-ORCA_DIR_STANDARD = project_path / "src" / "conditional_rate_matching" / "models" / "metrics" / "orca"
-ORCA_DIR_BERLIN = project_path / "src" / "conditional_rate_matching" / "models" / "metrics" / "orca_berlin"
-ORCA_DIR_NJ = project_path / "src" / "conditional_rate_matching" / "models" / "metrics" / "orca_new_jersey"
-
+ORCA_DIR_STANDARD = orca_path
 
 def read_orbit_counts(file_path):
     """
@@ -221,13 +219,7 @@ def edge_list_reindexed(G):
 
 
 def orca(graph, windows=True, orca_dir=None):
-    if orca_dir is None:
-        if windows:
-            ORCA_DIR = ORCA_DIR_BERLIN
-        else:
-            ORCA_DIR = ORCA_DIR_NJ
-    else:
-        ORCA_DIR = Path(orca_dir)
+    ORCA_DIR = Path(orca_dir)
 
     tmp_input_path = ORCA_DIR / "tmp.txt"
     f = open(tmp_input_path, "w")
@@ -239,7 +231,6 @@ def orca(graph, windows=True, orca_dir=None):
     if windows:
         command = "orca.exe  4 ./tmp.txt tmp.out"
         result = sp.run(command, shell=True, cwd=ORCA_DIR, stdout=sp.PIPE, stderr=sp.PIPE)
-
     else:
         command = "./orca  4 ./tmp.txt tmp.out"
         result = sp.run(command, shell=True, cwd=ORCA_DIR, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -378,9 +369,8 @@ def eval_graph_list(graph_ref_list, grad_pred_list, methods=None, windows=True, 
         print(results)
     return results
 
-
 from markov_bridges.models.metrics.abstract_metrics import BasicMetric
-from markov_bridges.configs.config_classes.metrics.metrics_configs import BasicMetricConfig
+from markov_bridges.configs.config_classes.metrics.metrics_configs import GraphMetricsConfig
 from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
@@ -390,22 +380,35 @@ from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
 class GraphsMetrics(BasicMetric):
     """
     """
-    def __init__(self, model: CJB, metrics_config: BasicMetricConfig):
+    def __init__(self, model: CJB, metrics_config: GraphMetricsConfig):
         super().__init__(model, metrics_config)
-        self.join_context:CJB.dataloader.join_context
         self.transform_to_native_shape = model.dataloader.transform_to_native_shape
+        self.networkx_from_sample = model.dataloader.networkx_from_sample
+        self.plot_graphs = metrics_config.plot_graphs
+        self.methods = metrics_config.methods
+        self.windows = metrics_config.windows
 
     def batch_operation(self, databatch: MarkovBridgeDataNameTuple, generative_sample: CJBPipelineOutput):
         pass
 
     def final_operation(self, all_metrics,samples_gather,epoch=None):
         generative_sample = self.transform_to_native_shape(samples_gather.raw_sample)
-        target_discrete =  self.transform_to_native_shape(samples_gather.target_discrete)
+        target_discrete = self.transform_to_native_shape(samples_gather.target_discrete)
         
-        if self.plots_path is not None:
-            plots_path = self.plots_path.format(self.name + "_{0}_".format(epoch))
+        generative_graphs = self.networkx_from_sample(generative_sample)
+        target_graphs = self.networkx_from_sample(target_discrete)
 
-        eval_graph_list()
+        if self.plot_graphs:
+            if self.plots_path is not None:
+                plots_path_generative = self.plots_path.format(self.name + "_generative_{0}_".format(epoch))
+                plots_path_original = self.plots_path.format(self.name + "_original_{0}_".format(epoch))
+            else:
+                plots_path_generative = None
+                plots_path_original = None
+            plot_graphs_list(generative_graphs,title="Generative",save_dir=plots_path_generative)
+            plot_graphs_list(target_graphs,title="Original",save_dir=plots_path_original)
+
+        all_metrics = eval_graph_list(target_graphs, generative_graphs, methods=self.methods, windows=self.windows)
         return all_metrics
 
 
@@ -414,10 +417,9 @@ if __name__=="__main__":
     from pprint import pprint
 
     graph = nx.barabasi_albert_graph(200, 3)
-    graph_list_1 = [nx.barabasi_albert_graph(200,3) for i in range(2)]
-    graph_list_2 = [nx.barabasi_albert_graph(200,3) for i in range(2)]
+    graph_list_1 = [nx.barabasi_albert_graph(200,3) for i in range(10)]
+    graph_list_2 = [nx.barabasi_albert_graph(200,3) for i in range(10)]
 
-    orca_dir = ORCA_DIR_BERLIN
     #node_orbit_counts = orca(graph_list_1[0])
-    results_ = eval_graph_list(graph_list_1, graph_list_2,methods=None,windows=True,orca_dir=ORCA_DIR_BERLIN)
+    results_ = eval_graph_list(graph_list_1, graph_list_2,methods=["orbit"],windows=True,orca_dir=orca_path)
     print(results_)

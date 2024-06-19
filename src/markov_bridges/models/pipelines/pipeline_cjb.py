@@ -61,9 +61,9 @@ class CJBPipeline:
                  return_origin:bool=False)->CJBPipelineOutput:
         """
         :param sample_size:
-        :param train:   If True sample initial points from  train dataloader
-        :param return_path:   Return full path batch_size,number_of_time_steps,
-        :param return_intermediaries:  Return path only at intermediate points
+        :param train: If True sample initial points from  train dataloader
+        :param return_path: Return full path batch_size,number_of_time_steps,
+        :param return_intermediaries: Return path only at intermediate points
 
         :return: x_f, last sampled point
                  x_path, full diffusion path
