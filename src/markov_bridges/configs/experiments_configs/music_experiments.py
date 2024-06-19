@@ -7,7 +7,8 @@ import pytest
 
 # configs
 
-from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig,CJBTrainerConfig
+
 from markov_bridges.configs.config_classes.metrics.metrics_configs import (
     MetricsAvaliable,
     HellingerMetricConfig,
@@ -23,15 +24,26 @@ from markov_bridges.utils.experiment_files import ExperimentFiles
 def conditional_music_experiment(number_of_epochs=3)->CJBConfig:
     experiment_config = CJBConfig()
     # data
-    experiment_config.data = LakhPianoRollConfig(has_context_discrete=True)
+    experiment_config.data = LakhPianoRollConfig(has_context_discrete=True,
+                                                 context_dimension=64) # CHANGE
     # temporal network
     experiment_config.temporal_network = SequenceTransformerConfig(num_heads=1,num_layers=1) #CHANGE
     # pipeline 
     experiment_config.pipeline.number_of_steps = 5  #CHANGE
+
     # trainer
-    experiment_config.trainer.number_of_epochs = number_of_epochs
-    experiment_config.trainer.warm_up = 5  #CHANGE
-    experiment_config.trainer.learning_rate = 1e-4
+    experiment_config.trainer = CJBTrainerConfig(
+        number_of_epochs=number_of_epochs,
+        warm_up=5,
+        learning_rate=1e-4,
+        scheduler="reduce",  # or "reduce", "exponential", "multi", None
+        step_size=30,  # for StepLR
+        gamma=0.1,  # for StepLR, MultiStepLR, ExponentialLR
+        milestones=[50, 100, 150],  # for MultiStepLR
+        factor=0.1,  # for ReduceLROnPlateau
+        patience=10  # for ReduceLROnPlateau
+    )
+
     # metrics
     experiment_config.trainer.metrics = [HellingerMetricConfig(),
                                          MusicPlotConfig()]

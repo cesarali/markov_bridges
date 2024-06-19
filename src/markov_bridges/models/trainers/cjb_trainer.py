@@ -8,6 +8,11 @@ from typing import List
 from dataclasses import dataclass,field
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim.lr_scheduler import StepLR
+
 
 from markov_bridges.models.generative_models.cjb import CJB
 
@@ -30,8 +35,15 @@ class CJBTrainer(Trainer):
         """
         If experiment dir is provided, he loads the model from that folder and then creates
         a new folder 
-        """
 
+        config: configuration file to start model
+        cjb: model to train 
+        experiment_files: files where to store the experiment
+        experiment_dir: if provided experiment dir of model to load to continue training
+        starting_type (str,int): for model in experiment_dir, defines which model to load, best, last or checkpoint if int provided
+
+        if experiment_dir is provided, it will ignore config
+        """
         if experiment_dir is not None:
             print("Starting Training from Model Provided in Experiment Dirs")
             self.generative_model = CJB(experiment_dir=experiment_dir,type_of_load=starting_type)
@@ -62,7 +74,31 @@ class CJBTrainer(Trainer):
     
     def get_model(self):
         return self.generative_model.forward_rate
-
+    
+    def define_scheduler(self):
+        # Check if a scheduler is defined in the configuration
+        if self.config.trainer.scheduler is not None:
+            if self.config.trainer.scheduler == "step":
+                # Define StepLR scheduler
+                self.scheduler = StepLR(self.optimizer, 
+                                        step_size=self.config.trainer.step_size, 
+                                        gamma=self.config.trainer.gamma)
+            elif self.config.trainer.scheduler == "multi":
+                # Define MultiStepLR scheduler
+                self.scheduler = MultiStepLR(self.optimizer, 
+                                            milestones=self.config.trainer.milestones, 
+                                            gamma=self.config.trainer.gamma)
+            elif self.config.trainer.scheduler == "exponential":
+                # Define ExponentialLR scheduler
+                self.scheduler = ExponentialLR(self.optimizer, 
+                                            gamma=self.config.trainer.gamma)
+            elif self.config.trainer.scheduler == "reduce":
+                # Define ReduceLROnPlateau scheduler
+                self.scheduler = ReduceLROnPlateau(self.optimizer, 
+                                                mode='min', 
+                                                factor=self.config.trainer.factor, 
+                                                patience=self.config.trainer.patience)
+        
     def initialize(self):
         """
         Obtains initial loss to know when to save, restart the optimizer
@@ -78,6 +114,8 @@ class CJBTrainer(Trainer):
                               lr=self.config.trainer.learning_rate,
                               weight_decay=self.config.trainer.weight_decay)
         
+        self.define_scheduler()
+            
         self.lr = self.config.trainer.learning_rate
         self.scheduler = None
 
@@ -110,9 +148,6 @@ class CJBTrainer(Trainer):
 
         # sample x from z
         sampled_x = self.generative_model.forward_rate.sample_x(target_discrete, source_discrete, time).float()
-
-        # databatch_target_discrete = databatch.target_discrete.to(self.device)
-        # databatch_context_discrete = databatch.context_discrete.to(self.device)
         
         databatch = nametuple_to_device(databatch, self.device)
 
@@ -145,6 +180,12 @@ class CJBTrainer(Trainer):
                 g['lr'] = self.lr * np.minimum(float(number_of_training_step) / self.config.trainer.warm_up, 1.0)
 
         self.optimizer.step()
+
+        # Update the learning rate scheduler based on its type
+        if self.config.trainer.scheduler in ["step", "multi", "exponential"]:
+            self.scheduler.step()
+        elif self.config.trainer.scheduler == "reduce":
+            self.scheduler.step(loss)
 
         if self.do_ema:
             self.generative_model.forward_rate.update_ema()
