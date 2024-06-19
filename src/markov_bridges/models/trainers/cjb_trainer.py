@@ -117,15 +117,10 @@ class CJBTrainer(Trainer):
         self.define_scheduler()
             
         self.lr = self.config.trainer.learning_rate
-        self.scheduler = None
 
         self.loss_stats = {}
         self.loss_stats_variance = {}
         self.loss_variance_times = torch.linspace(0.001,1.,20)
-
-        if self.config.trainer.lr_decay:
-            self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer,
-                                                                    gamma=self.config.trainer.lr_decay)
 
         if self.config.data.has_context_discrete:
             self.conditional_dimension = self.config.data.context_dimension
@@ -177,8 +172,19 @@ class CJBTrainer(Trainer):
 
         if self.config.trainer.warm_up > 0:
             for g in self.optimizer.param_groups:
-                g['lr'] = self.lr * np.minimum(float(number_of_training_step) / self.config.trainer.warm_up, 1.0)
-
+                new_lr = self.lr * np.minimum(float(number_of_training_step+1) / self.config.trainer.warm_up, 1.0)
+                g['lr'] = new_lr
+        
+        # after warm up finish start learning rate
+        if number_of_training_step == self.config.trainer.warm_up:
+            # Capture the learning rate at the end of warm-up
+            base_lr = self.optimizer.param_groups[0]['lr']
+            # Reinitialize the optimizer and scheduler with the new base_lr
+            self.optimizer = Adam(self.generative_model.forward_rate.parameters(),
+                                  lr=base_lr,
+                                  weight_decay=self.config.trainer.weight_decay)
+            self.define_scheduler()
+            
         self.optimizer.step()
         if self.config.trainer.warm_up > 0:
             if number_of_training_step > self.config.trainer.warm_up:
@@ -190,9 +196,6 @@ class CJBTrainer(Trainer):
 
                 if self.do_ema:
                     self.generative_model.forward_rate.update_ema()
-
-                if self.config.trainer.lr_decay:
-                    self.scheduler.step()
 
         self.writer.add_scalar('training loss', loss.item(), number_of_training_step)
         return loss

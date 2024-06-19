@@ -34,14 +34,14 @@ def conditional_music_experiment(number_of_epochs=3)->CJBConfig:
     # trainer
     experiment_config.trainer = CJBTrainerConfig(
         number_of_epochs=number_of_epochs,
-        warm_up=5,
+        warm_up=2,
         learning_rate=1e-4,
-        scheduler="reduce",  # or "reduce", "exponential", "multi", None
-        step_size=30,  # for StepLR
+        scheduler="exponential",  # or "reduce", "exponential", "multi", None
+        step_size=500,  # for StepLR
         gamma=0.1,  # for StepLR, MultiStepLR, ExponentialLR
-        milestones=[50, 100, 150],  # for MultiStepLR
-        factor=0.1,  # for ReduceLROnPlateau
-        patience=10  # for ReduceLROnPlateau
+        milestones=[6000, 7000, 10000],  # where to change the learning rate for MultiStepLR
+        factor=0.1,  # how much to reduce lr for ReduceLROnPlateau
+        patience=10  # how much to wait to judge for plateu in ReduceLROnPlateau
     )
 
     # metrics
@@ -63,7 +63,7 @@ def continue_music_experiment(experiment_dir):
 if __name__=="__main__":
     start = True # START NEW EXPERIMENT
     if start:
-        experiment_config = conditional_music_experiment(number_of_epochs=3)
+        experiment_config = conditional_music_experiment(number_of_epochs=5)
         experiment_config.trainer.debug = True # CHANGE
 
         experiment_files = ExperimentFiles(experiment_name="cjb",
