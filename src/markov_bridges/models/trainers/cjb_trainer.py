@@ -18,6 +18,7 @@ from markov_bridges.models.networks.utils.ema import EMA
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.models.trainers.abstract_trainer import TrainerState,Trainer
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
+from markov_bridges.utils.paralellism import nametuple_to_device
 
 class CJBTrainer(Trainer):
 
@@ -51,28 +52,14 @@ class CJBTrainer(Trainer):
                 self.dataloader = self.generative_model.dataloader
 
     def preprocess_data(self, databatch):
-        # Steps 1
-        person_dict = databatch._asdict()
 
-        # Step 2: Modify the dictionary dynamically
-        # Example modification: increment numerical values by 1
-        for key, value in person_dict.items():
-            if isinstance(value, int):  # Check if the value is an integer
-                person_dict[key] = value.to(self.device)
-
-        # Step 3: Convert back to namedtuple
-        # Get the namedtuple class/type of the original instance
-        NamedTuple = type(databatch)
-
-        # Create a new namedtuple instance with the modified values
-        databatch = NamedTuple(**person_dict)
         
         return databatch
 
     def paralellize_model(self):
         #DARIO
         self.generative_model.forward_rate
-        
+    
     def get_model(self):
         return self.generative_model.forward_rate
 
@@ -108,7 +95,7 @@ class CJBTrainer(Trainer):
 
         return np.inf
 
-    def train_step(self,databatch:MarkovBridgeDataNameTuple, number_of_training_step,epoch):
+    def train_step(self,databatch:MarkovBridgeDataNameTuple, number_of_training_step,  epoch):
         conditional_dimension = self.config.data.context_dimension
 
         join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
@@ -123,7 +110,12 @@ class CJBTrainer(Trainer):
 
         # sample x from z
         sampled_x = self.generative_model.forward_rate.sample_x(target_discrete, source_discrete, time).float()
-            
+
+        # databatch_target_discrete = databatch.target_discrete.to(self.device)
+        # databatch_context_discrete = databatch.context_discrete.to(self.device)
+        
+        databatch = nametuple_to_device(databatch, self.device)
+
         # loss
         if self.config.data.has_context_discrete:
             completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
@@ -131,13 +123,13 @@ class CJBTrainer(Trainer):
             model_classification_ = model_classification[:, self.config.data.context_dimension:,:]
             # reshape for cross logits
             model_classification_ = model_classification_.reshape(-1, self.config.data.vocab_size)
-            target_discrete_ = databatch.target_discrete.reshape(-1)
+            target_discrete_ = databatch.target_discrete .reshape(-1)
 
             loss = self.generative_model.loss(model_classification_, target_discrete_.long())
         else:
             model_classification = self.generative_model.forward_rate.classify(sampled_x, time)
             model_classification_ = model_classification.view(-1, self.config.data.vocab_size)
-            target_discrete_ = databatch.target_discrete.reshape(-1)
+            target_discrete_ = databatch.target_discrete .reshape(-1)
             loss = self.generative_model.loss(model_classification_,target_discrete_.long())
 
         loss = loss.mean()
@@ -179,6 +171,8 @@ class CJBTrainer(Trainer):
             # sample x from z
             sampled_x = self.generative_model.forward_rate.sample_x(target_discrete, source_discrete, time).float()
                 
+            databatch = nametuple_to_device(databatch, self.device)
+
             # loss
             if self.config.data.has_context_discrete:
                 completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
