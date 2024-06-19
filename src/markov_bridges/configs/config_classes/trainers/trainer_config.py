@@ -6,6 +6,11 @@ from markov_bridges import project_path
 ORCA_DIR_STANDARD = project_path / "src" / "conditional_rate_matching" / "models" / "metrics" / "orca"
 ORCA_DIR_STANDARD = str(ORCA_DIR_STANDARD)
 
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim.lr_scheduler import StepLR
+
 @dataclass
 class BasicTrainerConfig:
 
@@ -13,6 +18,15 @@ class BasicTrainerConfig:
     number_of_training_steps:int = 0
     number_of_test_step:int = 0
     paralellize_gpu:bool = False
+
+    # Scheduler-specific parameters
+    scheduler:str = None # step,reduce,exponential,multi
+
+    step_size: int = 30  # for StepLR
+    gamma: float = 0.1  # for StepLR, MultiStepLR, ExponentialLR
+    milestones: List[int] = field(default_factory=lambda: [50, 100, 150])  # for MultiStepLR
+    factor: float = 0.1  # for ReduceLROnPlateau
+    patience: int = 10  # for ReduceLROnPlateau
 
     number_of_epochs:int = 300
     log_loss:int = 100
@@ -38,7 +52,6 @@ class BasicTrainerConfig:
     berlin: bool = True
     distributed: bool = False
     debug:bool = False
-    orca_dir:str = ORCA_DIR_STANDARD
 
     metrics: List[str] = field(default_factory=lambda :["mse_histograms",
                                                         "kdmm",

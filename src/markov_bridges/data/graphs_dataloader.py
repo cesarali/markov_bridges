@@ -5,9 +5,8 @@ import numpy as np
 import networkx as nx
 from torchtyping import TensorType
 from typing import List,Dict,Tuple,Union
-from torch.utils.data import TensorDataset, DataLoader
-import torchvision.transforms as transforms
-
+from torch.utils.data import DataLoader
+from collections import namedtuple
 
 import os
 import torch
@@ -27,10 +26,10 @@ from markov_bridges.data.abstract_dataloader import (
 from markov_bridges.utils.graphs_utils import graphs_to_tensor
 from markov_bridges.data.transforms import get_transforms,get_expected_shape
 
+GraphDataNameTuple = namedtuple("DatabatchClass", "source_discrete target_discrete")
+
 
 class GraphDataloader(MarkovBridgeDataloader):
-    """
-    """
     graph_config : GraphDataloaderGeometricConfig
     name:str = "GraphDataloader"
     max_node_num:int 
@@ -45,12 +44,25 @@ class GraphDataloader(MarkovBridgeDataloader):
         self.transform_list,self.inverse_transform_list = get_transforms(graph_config)
         self.get_dataloaders()
 
-    def transform_to_native_shape(self,data):
-        data = self.inverse_transform_list(data)
-        return data
+    def transform_to_native_shape(self,data:Union[GraphDataNameTuple,torch.Tensor])->Union[GraphDataNameTuple,torch.Tensor]:
+        """
+        """
+        if isinstance(data,torch.Tensor):
+            return self.inverse_transform_list(data)
+        
+        # Convert named tuple to a dictionary
+        data_dict = data._asdict()
+        DataNamedTuple = type(data) 
+
+        # Update the dictionary entries
+        data_dict['source_discrete'] = self.inverse_transform_list(data.source_discrete)
+        data_dict['target_discrete'] = self.inverse_transform_list(data.target_discrete)
+
+        # Convert the dictionary back to the named tuple
+        updated_data = DataNamedTuple(**data_dict)
+        return updated_data
     
-    def networkx_from_sample(self,data):
-        adj_matrices = self.inverse_transform_list(data)
+    def networkx_from_sample(self,adj_matrices):
         # GET GRAPH FROM GENERATIVE MODEL
         graph_list = []
         number_of_graphs = adj_matrices.shape[0]
@@ -117,7 +129,7 @@ class GraphDataloader(MarkovBridgeDataloader):
         source_discrete = self.get_source_data(target_discrete,data_config)
 
         return MarkovBridgeDataClass(source_discrete=source_discrete,
-                                    target_discrete=target_discrete)
+                                     target_discrete=target_discrete)
     
     def read_graph_lists(self)->Tuple[List[nx.Graph]]:
         """

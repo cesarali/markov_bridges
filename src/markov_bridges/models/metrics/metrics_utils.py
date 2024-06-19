@@ -7,12 +7,14 @@ from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
 from markov_bridges.models.metrics.abstract_metrics import BasicMetric
 from markov_bridges.models.metrics.music_metrics import MusicPlots
 from markov_bridges.models.metrics.histogram_metrics import HellingerMetric
+from markov_bridges.models.metrics.graph_metrics import GraphsMetrics
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
 from markov_bridges.configs.config_classes.metrics.metrics_configs import(
     BasicMetricConfig,
     MusicPlotConfig,
     HellingerMetricConfig,
+    GraphMetricsConfig,
     metrics_config
 )
 
@@ -34,7 +36,10 @@ class GatherSamples:
         # how much to take
         raw_sample = generative_sample.raw_sample
         batch_size = raw_sample.size(0)
-        take_size = min(remaining_samples,batch_size)
+        if remaining_samples is None:
+            take_size  = batch_size
+        else:
+            take_size = min(remaining_samples,batch_size)
 
         # Initialize variables to None
         context_discrete = None
@@ -65,7 +70,8 @@ class GatherSamples:
             self.target_continuous.append(target_continuous)
 
         self.raw_sample.append(raw_sample)
-        remaining_samples = remaining_samples - take_size
+        if remaining_samples is not None:
+            remaining_samples = remaining_samples - take_size
 
         return remaining_samples
     
@@ -90,7 +96,8 @@ def load_metric(cjb:CJB,metric_config:Union[str,BasicMetricConfig]):
         metric = HellingerMetric(cjb,metric_config)
     elif isinstance(metric_config,MusicPlotConfig):
         metric = MusicPlots(cjb,metric_config)
-
+    elif isinstance(metric_config,GraphMetricsConfig):
+        metric = GraphsMetrics(cjb,metric_config)
     return metric
 
 def obtain_metrics_stats(model_config:CJBConfig,metrics_configs_list:List[BasicMetricConfig]):
@@ -274,6 +281,6 @@ class LogMetrics:
                 if remaining_samples == 0:
                     self.number_of_samples_to_gather = 0
             else:
-                self.samples_bag.gather(generative_sample)
+                self.samples_bag.gather(generative_sample,remaining_samples)
 
         return remaining_samples
