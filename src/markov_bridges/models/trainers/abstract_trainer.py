@@ -8,7 +8,9 @@ from tqdm import tqdm
 
 from torch.utils.tensorboard import SummaryWriter
 from markov_bridges.models.generative_models.cjb import CJB
+from markov_bridges.models.generative_models.cmb import CMB
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 from markov_bridges.models.metrics.metrics_utils import LogMetrics
 
 @dataclass
@@ -56,8 +58,8 @@ class Trainer(ABC):
     """
 
     dataloader = None
-    generative_model:Union[CJB] = None
-    config:Union[CJBConfig] = None
+    generative_model:CJB|CMB = None
+    config:CJBConfig|CMBConfig = None
     do_ema:bool = False
 
     def parameters_info(self):

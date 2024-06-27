@@ -11,7 +11,7 @@ from markov_bridges.models.generative_models.cjb_rate import ClassificationForwa
 from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
 from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
 
-from markov_bridges.data.utils import get_dataloaders
+from markov_bridges.data.dataloaders_utils import get_dataloaders
 
 def test_cjb():
     model_config = conditional_music_experiment()

@@ -27,7 +27,7 @@ class TemporalToRateLinear(nn.Module):
     def __init__(self, config:CJBConfig, temporal_output_total,device):
         nn.Module.__init__(self)
         self.vocab_size = config.data.vocab_size
-        self.dimensions = config.data.dimensions
+        self.dimensions = config.data.discrete_dimensions
         self.temporal_output_total = temporal_output_total
         self.device = device
 
@@ -83,7 +83,7 @@ class TemporalToRateLogistic(nn.Module):
     """
     def __init__(self, config:CJBConfig,temporal_output_total,device):
         nn.Module.__init__(self)
-        self.D = config.data.dimensions
+        self.D = config.data.discrete_dimensions
         self.S = config.data.vocab_size
         self.device = device
         self.fix_logistic = config.temporal_network_to_rate.fix_logistic
@@ -166,7 +166,7 @@ class ClassificationForwardRate(EMA,nn.Module):
         config_data = config.data
 
         self.vocab_size = config_data.vocab_size
-        self.dimensions = config_data.dimensions
+        self.dimensions = config_data.discrete_dimensions
         self.expected_data_shape = config_data.temporal_net_expected_shape
         self.temporal_network_to_rate = config.temporal_network_to_rate
 

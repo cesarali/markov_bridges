@@ -7,7 +7,7 @@ import pytest
 
 # configs
 
-from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig,CJBTrainerConfig
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
 from markov_bridges.configs.config_classes.metrics.metrics_configs import (
     MetricsAvaliable,
@@ -16,6 +16,7 @@ from markov_bridges.configs.config_classes.metrics.metrics_configs import (
 )
 
 # models
+from markov_bridges.configs.config_classes.trainers.trainer_config import CJBTrainerConfig
 from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.utils.experiment_files import ExperimentFiles
@@ -25,7 +26,7 @@ def conditional_music_experiment(number_of_epochs=3)->CJBConfig:
     experiment_config = CJBConfig()
     # data
     experiment_config.data = LakhPianoRollConfig(has_context_discrete=True,
-                                                 context_dimension=64) # CHANGE
+                                                 context_discrete_dimension=64) # CHANGE
     # temporal network
     experiment_config.temporal_network = SequenceTransformerConfig(num_heads=1,num_layers=1) #CHANGE
     # pipeline 

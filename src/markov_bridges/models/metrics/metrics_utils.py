@@ -231,40 +231,41 @@ class LogMetrics:
         """
         # dict to gather and return all calculated metrics
         all_metrics = {}
+        if len(self.metrics) > 0:
 
-        # keeps track of how many samples one needs to gather
-        remaining_samples = None
-        if self.number_of_samples_to_gather != 0:
-            if isinstance(self.number_of_samples_to_gather,int):
-                remaining_samples = self.number_of_samples_to_gather
+            # keeps track of how many samples one needs to gather
+            remaining_samples = None
+            if self.number_of_samples_to_gather != 0:
+                if isinstance(self.number_of_samples_to_gather,int):
+                    remaining_samples = self.number_of_samples_to_gather
 
-        # For each batch in the test set applies the operation requiered for the metrics using that batch
-        for databatch in model.dataloader.test():
-            generative_sample = model.pipeline.generate_sample(databatch,
-                                                               return_path=self.return_path,
-                                                               return_origin=self.return_origin)
-            
-            # perform the batch operation for each metric
+            # For each batch in the test set applies the operation requiered for the metrics using that batch
+            for databatch in model.dataloader.test():
+                generative_sample = model.pipeline.generate_sample(databatch,
+                                                                return_path=self.return_path,
+                                                                return_origin=self.return_origin)
+                
+                # perform the batch operation for each metric
+                for metric in self.metrics:
+                    if metric.batch_operation:
+                        metric.batch_operation(databatch,generative_sample)
+
+                # gather sample
+                remaining_samples = self.gather_samples(generative_sample,remaining_samples)
+
+                if self.debug:
+                    break
+                
+            # concatenate the samples
+            if self.samples_bag is not None:
+                self.samples_bag.concatenate_bags()
+
+            # Do Final Operation Per Metric
             for metric in self.metrics:
-                if metric.batch_operation:
-                    metric.batch_operation(databatch,generative_sample)
-
-            # gather sample
-            remaining_samples = self.gather_samples(generative_sample,remaining_samples)
-
-            if self.debug:
-                break
+                all_metrics = metric.final_operation(all_metrics,self.samples_bag,epoch)
             
-        # concatenate the samples
-        if self.samples_bag is not None:
-            self.samples_bag.concatenate_bags()
-
-        # Do Final Operation Per Metric
-        for metric in self.metrics:
-            all_metrics = metric.final_operation(all_metrics,self.samples_bag,epoch)
-        
         return all_metrics
-    
+        
     def gather_samples(self,
                        generative_sample:CJBPipelineOutput,
                        remaining_samples:int):

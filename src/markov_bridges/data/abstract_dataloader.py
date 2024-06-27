@@ -11,7 +11,7 @@ import torch
 from collections import namedtuple
 from typing import List
 
-MarkovBridgeDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous")
+MarkovBridgeDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous time")
 
 def create_databatch_nametuple(data):
     fields = []
@@ -27,7 +27,7 @@ def create_databatch_nametuple(data):
         fields.append("context_discrete")
     if data.context_continuous is not None:
         fields.append("context_continuous")
-    
+    fields.append("time")
     DatabatchNameTuple = namedtuple("DatabatchClass", fields)
     return DatabatchNameTuple
 
@@ -65,8 +65,10 @@ class MarkovBridgeDataset(Dataset):
     """
     def __init__(self, data: MarkovBridgeDataClass):
         super(MarkovBridgeDataset, self).__init__()
-
-        self.num_samples = data.target_discrete.size(0)
+        if data.target_discrete is not None:
+            self.num_samples = data.target_discrete.size(0)
+        if data.target_continuous is not None:
+            self.num_samples = data.target_continuous.size(0)
         self.data = data
         self.DatabatchNameTuple = create_databatch_nametuple(data)
 
@@ -89,6 +91,8 @@ class MarkovBridgeDataset(Dataset):
         if self.data.context_continuous is not None:
             data_fields.append(self.data.context_continuous[idx])
 
+        data_fields.append(torch.rand((1,)))
+
         databatch = self.DatabatchNameTuple(*data_fields)
         return databatch
 
@@ -104,6 +108,8 @@ class MarkovBridgeDataloader:
     
     ALL DATA SHOULD BE STORE IN SHAPE
     [data_size,dimensions]
+
+    the function transform_to_native_shape should transform the shape to wat is needed 
 
     The MarkovBridgeDataset uses MarkovBridgeDataClass as a way of storing the whole data
     this deafults to None the non provided aspects of the data.
@@ -122,13 +128,24 @@ class MarkovBridgeDataloader:
     source denotes the distribution at time = 0 
     target denotes the distribution at time = 1
     """
-    def __init__(self):
-        return None
+    def __init__(self,config:None):
+        if config is not None:
+            self.has_context_discrete = config.has_context_discrete    
+            self.has_context_continuous = config.has_context_continuous
+        
+            self.has_target_continuous = config.has_target_continuous
+            self.has_target_discrete = config.has_target_discrete
+
+            self.discrete_dimensions = config.discrete_dimensions
+            self.continuos_dimensions = config.continuos_dimensions
     
     def get_source_data(self):
         return None
     
     def get_target_data(self):
+        return None
+    
+    def join_context(databatch:MarkovBridgeDataNameTuple,discrete_data,continuous_data):
         return None
     
     def get_data_divisions(self)->MarkovBridgeDataClass:
@@ -226,13 +243,13 @@ class MarkovBridgeDataloader:
         Remember that all data needed by the generative models requiere shape
         batch_size,dimensions
 
-        however, the data typically requieres being express in a different shape 
-        such as 
+        however, for encoding or postprocessing 
+        the data typically requieres being express in a different shape such as 
 
         graphs: [batch_size,number_of_nodes,number_of_nodes]
         images: [batch_size,number_of_channels,height,width]
 
-        this function should transform back to the requiered native shape
+        this function should transform [batch_size,dimensions] back to the requiered native shape
         """
         pass
         
@@ -250,3 +267,4 @@ class MarkovBridgeDataloader:
                                                     context_discrete, context_continuous)
             return repeated_sample
         return sample
+

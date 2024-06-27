@@ -4,10 +4,16 @@ import torch
 from torch import nn
 
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 
 class EMA():
-    def __init__(self, cfg:Union[CJBConfig]):
-        self.decay = cfg.temporal_network.ema_decay
+    def __init__(self, cfg:CJBConfig|CMBConfig):
+
+        if hasattr(cfg,"temporal_network"):
+            self.decay = cfg.temporal_network.ema_decay
+        elif hasattr(cfg,"mixed_network"):
+            self.decay = cfg.mixed_network.ema_decay
+
         if self.decay < 0.0 or self.decay > 1.0:
             raise ValueError('Decay must be between 0 and 1')
         self.shadow_params = []

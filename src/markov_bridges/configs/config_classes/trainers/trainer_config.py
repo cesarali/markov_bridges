@@ -2,6 +2,7 @@ from typing import List
 from dataclasses import dataclass,field
 
 from markov_bridges import project_path
+from markov_bridges.configs.config_classes.metrics.metrics_configs import metrics_config
 
 ORCA_DIR_STANDARD = project_path / "src" / "conditional_rate_matching" / "models" / "metrics" / "orca"
 ORCA_DIR_STANDARD = str(ORCA_DIR_STANDARD)
@@ -61,3 +62,47 @@ class BasicTrainerConfig:
         self.save_model_epochs = int(.5*self.number_of_epochs)
         self.save_metric_epochs = self.number_of_epochs - 1
         self.save_model_test_stopping = not self.save_model_metrics_stopping
+
+
+@dataclass
+class CJBTrainerConfig(BasicTrainerConfig):
+    name:str = "CJBTrainer"
+    loss_regularize_variance:bool = False
+    loss_regularize:bool = False
+    loss_regularize_square:bool = False
+    max_iterations:int = 1000000
+    warm_up:int=0
+
+    def __post_init__(self):
+        new_metrics = []
+        for metric in self.metrics:
+            if isinstance(metric,dict):
+                metric = metrics_config[metric["name"]](**metric)
+                new_metrics.append(metric)
+            elif isinstance(metric,str):
+                new_metrics.append(metric)
+            else:
+                pass
+        self.metrics = new_metrics
+
+
+@dataclass
+class CMBTrainerConfig(BasicTrainerConfig):
+    name:str = "CMBTrainer"
+    loss_regularize_variance:bool = False
+    loss_regularize:bool = False
+    loss_regularize_square:bool = False
+    max_iterations:int = 1000000
+    warm_up:int=0
+
+    def __post_init__(self):
+        new_metrics = []
+        for metric in self.metrics:
+            if isinstance(metric,dict):
+                metric = metrics_config[metric["name"]](**metric)
+                new_metrics.append(metric)
+            elif isinstance(metric,str):
+                new_metrics.append(metric)
+            else:
+                pass
+        self.metrics = new_metrics

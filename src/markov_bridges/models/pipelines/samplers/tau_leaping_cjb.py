@@ -20,9 +20,9 @@ def TauLeapingCJB(config:Union[CJBConfig],
 
     :return:
     """
-    D = config.data.dimensions
+    D = config.data.discrete_dimensions
     S = config.data.vocab_size
-    conditional_dimension = config.data.context_dimension
+    conditional_dimension = config.data.context_discrete_dimension
 
     if config.data.has_context_discrete:
         join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)

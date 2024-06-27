@@ -197,7 +197,7 @@ class SequenceTransformer(nn.Module):
         use_one_hot_input = cfg.temporal_network.use_one_hot_input
 
         self.S = cfg.data.vocab_size
-        max_len = cfg.data.dimensions
+        max_len = cfg.data.discrete_dimensions
 
         tmp_net = TransformerEncoder(
             num_layers, d_model, num_heads, dim_feedforward, dropout,

@@ -15,17 +15,17 @@ class GraphDataloaderGeometricConfig(MarkovBridgeDataConfig):
     name:str = "GraphDataloaderGeometric"
     data_dir:str = graph_data_path
 
-    dataset_name: str =None
-    batch_size: int=None
+    dataset_name: str = None
+    batch_size: int = None
     data_dir:str = graph_data_path
     
     full_adjacency:bool = False
     flatten:bool = True
 
-    max_node_num: int=None
-    max_feat_num: int=None
+    max_node_num: int = None
+    max_feat_num: int = None
 
-    dimensions: int = None
+    discrete_dimensions: int = None
     vocab_size: int = 2
 
     total_data_size:int = None
@@ -33,8 +33,8 @@ class GraphDataloaderGeometricConfig(MarkovBridgeDataConfig):
     test_size:int = None
     test_split: float=None
 
-    max_training_size:int =None
-    max_test_size:int=None
+    max_training_size:int = None
+    max_test_size:int = None
 
     temporal_net_expected_shape : List[int] = None
     data_min_max: List[float] = field(default_factory=lambda:[0.,1.])

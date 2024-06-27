@@ -11,7 +11,7 @@ import numpy as np
 from torch.nn.functional import softmax
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
-from markov_bridges.data.utils import get_dataloaders
+from markov_bridges.data.dataloaders_utils import get_dataloaders
 from markov_bridges.data.graphs_dataloader import GraphDataloader
 from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
 from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
@@ -75,7 +75,7 @@ class CJB:
             B = B.item() if isinstance(B,torch.Tensor) else B
             self.config.optimal_transport.method = "sinkhorn"
             self.config.optimal_transport.normalize_cost = True
-            self.config.optimal_transport.normalize_cost_constant = float(self.config.data.dimensions)
+            self.config.optimal_transport.normalize_cost_constant = float(self.config.data.discrete_dimensions)
             reg = 1./B
             print("OT regularizer for Schrodinger Plan {0}".format(reg))
             self.config.optimal_transport.reg = reg
@@ -116,7 +116,7 @@ class CJB:
             B = B.item() if isinstance(B,torch.Tensor) else B
             self.config.optimal_transport.method = "sinkhorn"
             self.config.optimal_transport.normalize_cost = True
-            self.config.optimal_transport.normalize_cost_constant = float(self.config.data.dimensions)
+            self.config.optimal_transport.normalize_cost_constant = float(self.config.data.discrete_dimensions)
             reg = 1./B
             print("OT regularizer for Schrodinger Plan {0}".format(reg))
             self.config.optimal_transport.reg = reg        

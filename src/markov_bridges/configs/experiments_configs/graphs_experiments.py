@@ -9,12 +9,13 @@ from markov_bridges.configs.config_classes.data.graphs_configs import (
 )
 
 from markov_bridges.configs.config_classes.networks.temporal_networks_config import TemporalMLPConfig
-from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig,CJBTrainerConfig
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.configs.config_classes.networks.temporal_networks_config import TemporalMLPConfig
 from markov_bridges.configs.config_classes.metrics.metrics_configs import MetricsAvaliable,HellingerMetricConfig,GraphMetricsConfig
 
 # models
 
+from markov_bridges.configs.config_classes.trainers.trainer_config import CJBTrainerConfig
 from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
@@ -31,7 +32,7 @@ def get_graph_experiment(dataset_name="community_small",number_of_epochs=100):
     # define metrics
     metrics = [HellingerMetricConfig(plot_binary_histogram=True),
                GraphMetricsConfig(plot_graphs=True,
-                                  methods=["orbit","degree","cluster"],
+                                  methods=["orbit"],
                                   windows=True)] # CHANGE IF ORCA IS COMPILED IN UNIX
     experiment_config.trainer.metrics = metrics
     return experiment_config

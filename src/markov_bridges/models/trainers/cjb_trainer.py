@@ -123,13 +123,13 @@ class CJBTrainer(Trainer):
         self.loss_variance_times = torch.linspace(0.001,1.,20)
 
         if self.config.data.has_context_discrete:
-            self.conditional_dimension = self.config.data.context_dimension
-            self.generation_dimension = self.config.data.dimensions - self.conditional_dimension
+            self.conditional_dimension = self.config.data.context_discrete_dimension
+            self.generation_dimension = self.config.data.discrete_dimensions - self.conditional_dimension
 
         return np.inf
 
     def train_step(self,databatch:MarkovBridgeDataNameTuple, number_of_training_step,  epoch):
-        conditional_dimension = self.config.data.context_dimension
+        conditional_dimension = self.config.data.context_discrete_dimension
 
         join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
         remove_context = lambda full_data_discrete : full_data_discrete[:,conditional_dimension:]
@@ -150,7 +150,7 @@ class CJBTrainer(Trainer):
         if self.config.data.has_context_discrete:
             completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
             model_classification = self.generative_model.forward_rate.classify(completed_sampled_x, time)
-            model_classification_ = model_classification[:, self.config.data.context_dimension:,:]
+            model_classification_ = model_classification[:, self.config.data.context_discrete_dimension:,:]
             # reshape for cross logits
             model_classification_ = model_classification_.reshape(-1, self.config.data.vocab_size)
             target_discrete_ = databatch.target_discrete .reshape(-1)
@@ -167,15 +167,17 @@ class CJBTrainer(Trainer):
         self.optimizer.zero_grad()
         loss.backward()
 
+        # clip grad norm
         if self.config.trainer.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.generative_model.forward_rate.parameters(), self.config.trainer.clip_max_norm)
 
+        # this is the Cambel solution to the learning rate
         if self.config.trainer.warm_up > 0:
             for g in self.optimizer.param_groups:
                 new_lr = self.lr * np.minimum(float(number_of_training_step+1) / self.config.trainer.warm_up, 1.0)
                 g['lr'] = new_lr
         
-        # after warm up finish start learning rate
+        # after warm up finish start scheduler with last learning rate 
         if number_of_training_step == self.config.trainer.warm_up:
             # Capture the learning rate at the end of warm-up
             base_lr = self.optimizer.param_groups[0]['lr']
@@ -186,6 +188,8 @@ class CJBTrainer(Trainer):
             self.define_scheduler()
             
         self.optimizer.step()
+
+        #after warm up call schedulers
         if self.config.trainer.warm_up > 0:
             if number_of_training_step > self.config.trainer.warm_up:
                 # Update the learning rate scheduler based on its type
@@ -202,7 +206,7 @@ class CJBTrainer(Trainer):
 
     def test_step(self,databatch:MarkovBridgeDataNameTuple, number_of_test_step,epoch):
         with torch.no_grad():
-            conditional_dimension = self.config.data.context_dimension
+            conditional_dimension = self.config.data.context_discrete_dimension
             join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
             remove_context = lambda full_data_discrete : full_data_discrete[:,conditional_dimension:]
 
@@ -222,7 +226,7 @@ class CJBTrainer(Trainer):
             if self.config.data.has_context_discrete:
                 completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
                 model_classification = self.generative_model.forward_rate.classify(completed_sampled_x, time)
-                model_classification_ = model_classification[:, self.config.data.context_dimension:,:]
+                model_classification_ = model_classification[:, self.config.data.context_discrete_dimension:,:]
                 # reshape for cross logits
                 model_classification_ = model_classification_.reshape(-1, self.config.data.vocab_size)
                 target_discrete_ = databatch.target_discrete.reshape(-1)

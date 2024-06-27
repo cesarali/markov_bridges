@@ -16,11 +16,14 @@ class LakhPianoRollConfig(MarkovBridgeDataConfig):
     batch_size: int= 32
     data_dir:str = data_path
 
-    dimensions: int = 256
+    discrete_dimensions: int = 256
     vocab_size: int = 129
-    context_dimension:int = 32
-    generation_dimension:int = 224
 
+    context_discrete_dimension:int = 32
+    context_continuous_dimension:int = 32
+
+    discrete_generation_dimension:int = 224
+    
     total_data_size: int = 6973
     training_size: int = 6000
     test_size: int = 973
@@ -29,7 +32,7 @@ class LakhPianoRollConfig(MarkovBridgeDataConfig):
     data_min_max: List[float] = field(default_factory=lambda:[0.,128.])
 
     def __post_init__(self):
-        self.dimensions, self.temporal_net_expected_shape = self.dimensions, [self.dimensions]
+        self.discrete_dimensions, self.temporal_net_expected_shape = self.discrete_dimensions, [self.discrete_dimensions]
         self.number_of_labels = None
         self.test_split = self.test_size/float(self.total_data_size)
-        self.generation_dimension = self.dimensions - self.context_dimension
+        self.discrete_generation_dimension = self.discrete_dimensions - self.context_discrete_dimension

@@ -26,7 +26,7 @@ class HellingerMetric(BasicMetric):
         super().__init__(model,metrics_config)
 
         self.binary = metrics_config.binary
-        self.dimensions = model.config.data.dimensions
+        self.dimensions = model.config.data.discrete_dimensions
         self.vocab_size = model.config.data.vocab_size
         self.plot_histogram = metrics_config.plot_histogram 
         self.plot_binary_histogram = metrics_config.plot_binary_histogram

@@ -25,7 +25,7 @@ class LankhPianoRollDataloader(MarkovBridgeDataloader):
         :param device:
         """
         self.music_config = music_config
-        self.number_of_spins = self.music_config.dimensions
+        self.number_of_spins = self.music_config.discrete_dimensions
         self.get_dataloaders()
         self.define_functions()
 
@@ -65,7 +65,7 @@ class LankhPianoRollDataloader(MarkovBridgeDataloader):
     
     def get_source_data(self,dataset,data_config:MarkovBridgeDataConfig):
         dataset_size = dataset.size(0)
-        generation_dimension = data_config.dimensions - data_config.context_dimension
+        generation_dimension = data_config.discrete_dimensions - data_config.context_discrete_dimension
         if data_config.source_discrete_type == "uniform":
             vocab_size = data_config.vocab_size
             NoiseDistribution = Categorical(torch.full((vocab_size,),1./vocab_size))
@@ -82,12 +82,12 @@ class LankhPianoRollDataloader(MarkovBridgeDataloader):
         source_discrete = self.get_source_data(dataset,data_config)
 
         # context
-        if data_config.context_dimension > 0:
-            context_discrete = dataset[:,:data_config.context_dimension]
+        if data_config.context_discrete_dimension > 0:
+            context_discrete = dataset[:,:data_config.context_discrete_dimension]
         else:
             context_discrete = None
         # target
-        target_discrete = dataset[:,data_config.context_dimension:]
+        target_discrete = dataset[:,data_config.context_discrete_dimension:]
 
         return MarkovBridgeDataClass(source_discrete=source_discrete,
                                     context_discrete=context_discrete,
@@ -97,7 +97,7 @@ class LankhPianoRollDataloader(MarkovBridgeDataloader):
         return self.descramble_key[samples.flatten().astype(int)].reshape(*samples.shape)
     
     def define_functions(self):
-        context_dimension = self.music_config.context_dimension
+        context_dimension = self.music_config.context_discrete_dimension
         self.join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
         self.remove_context = lambda full_data_discrete : full_data_discrete[:,context_dimension:]
 

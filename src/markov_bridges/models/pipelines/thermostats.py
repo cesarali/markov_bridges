@@ -9,9 +9,28 @@ from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs impo
     ConstantThermostatConfig
 )
 
-class ConstantThermostat:
+from markov_bridges.utils.numerics.integration import integrate_quad_tensor_vec
+
+class Thermostat:
+
+    def __init__(self) -> None:
+        return None
+    
+    def beta_integral(self, t1, t0):
+        """
+        Dummy integral for constant rate
+        """
+        if isinstance(self,ConstantThermostat):
+            integral = (t1 - t0)*self.gamma
+        else:
+            integral = integrate_quad_tensor_vec(self.__call__, t0, t1, 100)
+        return integral
+
+
+class ConstantThermostat(Thermostat):
 
     def __init__(self,config:ConstantThermostatConfig):
+        super().__init__()
         self.gamma = config.gamma
 
     def __call__(self, t):
@@ -24,9 +43,10 @@ class ConstantThermostat:
         integral = self.gamma * interval
         return integral
 
-class LogThermostat:
+class LogThermostat(Thermostat):
 
     def __init__(self,config:LogThermostatConfig):
+        super().__init__()
         self.time_base = config.time_base
         self.time_exponential = config.time_exponential
 
@@ -40,9 +60,10 @@ class LogThermostat:
         return thermostat.to(device)
 
 
-class ExponentialThermostat:
+class ExponentialThermostat(Thermostat):
 
     def __init__(self,config:ExponentialThermostatConfig):
+        super().__init__()
         self.max = config.max
         self.gamma = config.gamma
 
@@ -54,9 +75,10 @@ class ExponentialThermostat:
         thermostat = torch.exp(-self.gamma*torch.abs(t-0.5))*self.max
         return thermostat.to(device)
 
-class InvertedExponentialThermostat:
+class InvertedExponentialThermostat(Thermostat):
 
     def __init__(self,config:InvertedExponentialThermostatConfig):
+        super().__init__()
         self.max = config.max
         self.gamma = config.gamma
 
