@@ -227,10 +227,11 @@ class IndependentMixDataloader(MarkovBridgeDataloader):
         test_data = self.get_data_divisions(type="test")
         test_data = MarkovBridgeDataset(test_data)
 
+        self.fields = test_data.fields
         self.train_dataloader = DataLoader(train_data, batch_size=self.data_config.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_data,batch_size=self.data_config.batch_size, shuffle=True)
 
-    def join_context(self,databatch:MarkovBridgeDataNameTuple,discrete_data,continuous_data):
+    def join_context(self,databatch:MarkovBridgeDataNameTuple,discrete_data=None,continuous_data=None):
         if self.has_context_continuous:
             context_continuous = databatch.context_continuous
             full_continuous = context_continuous

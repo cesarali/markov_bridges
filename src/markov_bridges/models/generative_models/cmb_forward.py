@@ -125,7 +125,10 @@ class MixedForwardMap(EMA,nn.Module):
         if len(x.shape) != 2:
             x = x.reshape(batch_size,-1)
 
-        beta_integral_ = self.discrete_bridge_.beta_integral(right_time_size(1.,x), right_time_size(time,x))
+        t_1 = right_time_size(1.,x)
+        time_ = right_time_size(time,x)
+
+        beta_integral_ = self.discrete_bridge_.beta_integral(t_1,time_)
         w_1t = torch.exp(-self.vocab_size * beta_integral_)
         A = 1.
         B = (w_1t * self.vocab_size) / (1. - w_1t)
@@ -133,18 +136,23 @@ class MixedForwardMap(EMA,nn.Module):
 
         change_classifier = softmax(change_logits, dim=2)
 
-        #x = x.reshape(batch_size,self.dimensions)
         where_iam_classifier = torch.gather(change_classifier, 2, x.long().unsqueeze(2))
 
         rates = A + B[:,None,None]*change_classifier + C[:,None,None]*where_iam_classifier
         return rates
     
-    def continuous_drift(self,x,t):
-        return None
+    def continuous_drift(self,continuous_head,x,time):
+        drift = (continuous_head - x)/(1.-time[:,None])
+        return drift
     
-    def forward_map(self,databatch:MarkovBridgeDataNameTuple):
-        discrete_head, continuous_head = self.mixed_network(databatch)
-        return None
+    def forward_map(self,discrete_sample,continuous_sample,time):
+        if len(time.shape) > 1:
+            time = time.flatten()
+
+        discrete_head,continuous_head = self.mixed_network(discrete_sample,continuous_sample,time)
+        rate = self.discrete_rate(discrete_head,discrete_sample,time)
+        drift = self.continuous_drift(continuous_head,continuous_sample,time)
+        return rate,drift
     
     #====================================================================
     # LOSS
@@ -153,8 +161,8 @@ class MixedForwardMap(EMA,nn.Module):
         # IF WE HAVE CONTEXT JOIN FOR FULL DATA
         if self.has_context_continuous or self.has_context_discrete:
             discrete_sample,continuous_sample = self.join_context(databatch,
-                                                                discrete_sample,
-                                                                continuous_sample)
+                                                                  discrete_sample,
+                                                                  continuous_sample)
         
         # Calculate Heads For Classifier or Mean Average
         discrete_head,continuous_head = self.mixed_network(discrete_sample,continuous_sample,databatch.time)
@@ -202,8 +210,8 @@ class MixedForwardMap(EMA,nn.Module):
         \end{equation}
 
         """
-        t = right_time_size(x,t).to(x0.device)
-        t0 = right_time_size(x,t0).to(x0.device)
+        t = right_time_size(t,x).to(x0.device)
+        t0 = right_time_size(t0,x).to(x0.device)
 
         integral_t0 = self.discrete_bridge_.beta_integral(t, t0)
         w_t0 = torch.exp(-self.vocab_size * integral_t0)

@@ -48,7 +48,17 @@ class MetricsAvaliable:
     histogram_hellinger:str = "histogram_hellinger"
     music_plot:str = "music_plot"
 
+
+@dataclass
+class MixedHellingerMetricConfig(BasicMetricConfig):
+    name:str = "mixed_histogram_hellinger"
+
+    plot_histogram:bool = False
+    plot_continuous_variables:bool = False
+    number_of_dimensions_to_plot:int = 2
+
 metrics_config = {
+    "mixed_histogram_hellinger":MixedHellingerMetricConfig,
     "histogram_hellinger":HellingerMetricConfig,
     "music_plot":MusicPlotConfig,
     "graphs_metrics":GraphMetricsConfig,

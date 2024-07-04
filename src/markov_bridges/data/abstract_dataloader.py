@@ -29,7 +29,7 @@ def create_databatch_nametuple(data):
         fields.append("context_continuous")
     fields.append("time")
     DatabatchNameTuple = namedtuple("DatabatchClass", fields)
-    return DatabatchNameTuple
+    return DatabatchNameTuple,fields
 
 @dataclass
 class MarkovBridgeDataClass:
@@ -70,7 +70,7 @@ class MarkovBridgeDataset(Dataset):
         if data.target_continuous is not None:
             self.num_samples = data.target_continuous.size(0)
         self.data = data
-        self.DatabatchNameTuple = create_databatch_nametuple(data)
+        self.DatabatchNameTuple,self.fields = create_databatch_nametuple(data)
 
     def __len__(self):
         return self.num_samples
@@ -145,7 +145,7 @@ class MarkovBridgeDataloader:
     def get_target_data(self):
         return None
     
-    def join_context(databatch:MarkovBridgeDataNameTuple,discrete_data,continuous_data):
+    def join_context(databatch:MarkovBridgeDataNameTuple,discrete_data=None,continuous_data=None):
         return None
     
     def get_data_divisions(self)->MarkovBridgeDataClass:
@@ -208,10 +208,12 @@ class MarkovBridgeDataloader:
         source_continuous = []
         target_discrete = []
         target_continuous = []
+        time = []
 
         size_left = sample_size
 
         for databatch in dataloader_iterator:
+            databatch:MarkovBridgeDataNameTuple
             batch_size = databatch.source_discrete.size(0)
             take_size = min(size_left, batch_size)
             
@@ -221,6 +223,7 @@ class MarkovBridgeDataloader:
             safe_append(source_continuous, databatch.source_continuous[:take_size] if hasattr(databatch, 'source_continuous') else None)
             safe_append(target_discrete, databatch.target_discrete[:take_size] if hasattr(databatch, 'target_discrete') else None)
             safe_append(target_continuous, databatch.target_continuous[:take_size] if hasattr(databatch, 'target_continuous') else None)
+            safe_append(time, databatch.time[:take_size] if hasattr(databatch, 'time') else None)
 
             size_left -= take_size
             if size_left <= 0:
@@ -235,7 +238,8 @@ class MarkovBridgeDataloader:
 
         aggregated_batch = MarkovBridgeDataNameTuple(source_discrete, source_continuous, 
                                                   target_discrete, target_continuous,
-                                                  context_discrete, context_continuous)
+                                                  context_discrete, context_continuous, 
+                                                  time)
         return aggregated_batch
     
     def transform_to_native_shape(self)->MarkovBridgeDataNameTuple:

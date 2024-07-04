@@ -1,12 +1,11 @@
 import torch
 from typing import Union,List
-from dataclasses import dataclass
 
 from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
 from markov_bridges.models.metrics.abstract_metrics import BasicMetric
 from markov_bridges.models.metrics.music_metrics import MusicPlots
-from markov_bridges.models.metrics.histogram_metrics import HellingerMetric
+from markov_bridges.models.metrics.histogram_metrics import HellingerMetric,MixedHellingerMetric
 from markov_bridges.models.metrics.graph_metrics import GraphsMetrics
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
@@ -15,6 +14,7 @@ from markov_bridges.configs.config_classes.metrics.metrics_configs import(
     MusicPlotConfig,
     HellingerMetricConfig,
     GraphMetricsConfig,
+    MixedHellingerMetricConfig,
     metrics_config
 )
 
@@ -98,6 +98,8 @@ def load_metric(cjb:CJB,metric_config:Union[str,BasicMetricConfig]):
         metric = MusicPlots(cjb,metric_config)
     elif isinstance(metric_config,GraphMetricsConfig):
         metric = GraphsMetrics(cjb,metric_config)
+    elif isinstance(metric_config,MixedHellingerMetricConfig):
+        metric = MixedHellingerMetric(cjb,metric_config)
     return metric
 
 def obtain_metrics_stats(model_config:CJBConfig,metrics_configs_list:List[BasicMetricConfig]):
@@ -242,8 +244,8 @@ class LogMetrics:
             # For each batch in the test set applies the operation requiered for the metrics using that batch
             for databatch in model.dataloader.test():
                 generative_sample = model.pipeline.generate_sample(databatch,
-                                                                return_path=self.return_path,
-                                                                return_origin=self.return_origin)
+                                                                   return_path=self.return_path,
+                                                                   return_origin=self.return_origin)
                 
                 # perform the batch operation for each metric
                 for metric in self.metrics:
@@ -270,18 +272,19 @@ class LogMetrics:
                        generative_sample:CJBPipelineOutput,
                        remaining_samples:int):
         """
-        for metrics that requiered aggregated samples we gather 
+        for metrics that requiere aggregated samples we gather 
         the samples in a list, the gathering is done to the 
-        maximum number from the whole list of metrics.
+        maximum number requiered from the whole list of metrics.
 
         metrics are gathered in self.samples_bag
         """
         if self.number_of_samples_to_gather != 0:
+            # if a number then there is a finite amount to gather
             if isinstance(self.number_of_samples_to_gather,int):
                 remaining_samples = self.samples_bag.gather(generative_sample,remaining_samples)
                 if remaining_samples == 0:
                     self.number_of_samples_to_gather = 0
             else:
+                # here we gather all
                 self.samples_bag.gather(generative_sample,remaining_samples)
-
         return remaining_samples

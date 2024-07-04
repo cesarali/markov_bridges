@@ -65,7 +65,7 @@ class CMBConfig:
     Data class to store all configuration files from CMB model
     """
     # data
-    data: Union[LakhPianoRollConfig] = None
+    data: LakhPianoRollConfig|IndependentMixConfig = IndependentMixConfig()
     # process 
     thermostat : Union[ConstantThermostatConfig, LogThermostatConfig] = ConstantThermostatConfig()
     # temporal network
@@ -75,7 +75,7 @@ class CMBConfig:
     # training
     trainer: CMBTrainerConfig = CMBTrainerConfig()
     #pipeline
-    pipeline : BasicPipelineConfig = BasicPipelineConfig()
+    pipeline : BasicPipelineConfig = BasicPipelineConfig(num_intermediates=None)
 
     def __post_init__(self):
         if isinstance(self.data,dict):

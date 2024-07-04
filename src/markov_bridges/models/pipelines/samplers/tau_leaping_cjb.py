@@ -16,7 +16,6 @@ def TauLeapingCJB(config:Union[CJBConfig],
     :param rate_model:
     :param x_0:
     :param N:
-    :param num_intermediates:
 
     :return:
     """

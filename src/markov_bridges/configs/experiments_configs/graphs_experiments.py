@@ -50,7 +50,7 @@ def continue_graph_experiment(experiment_dir):
 if __name__=="__main__":
     start = True
     if start:
-        experiment_config = get_graph_experiment(number_of_epochs=200)
+        experiment_config = get_graph_experiment(number_of_epochs=5)
         experiment_files = ExperimentFiles(experiment_name="cjb",
                                         experiment_type="graph")    
         trainer = CJBTrainer(config=experiment_config,

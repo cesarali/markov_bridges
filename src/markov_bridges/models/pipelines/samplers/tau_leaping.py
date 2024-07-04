@@ -42,7 +42,6 @@ def TauLeaping(config:Union[DSBConfig,CTDDConfig,CRMConfig],
     :param rate_model:
     :param x_0:
     :param N:
-    :param num_intermediates:
     :return:
     """
 
@@ -138,7 +137,6 @@ def TauLeapingRates(config:Union[DSBConfig,CTDDConfig,CRMConfig],
     :param rate_model:
     :param x_0:
     :param N:
-    :param num_intermediates:
     :return:
     """
     number_of_paths = x_0.size(0)
