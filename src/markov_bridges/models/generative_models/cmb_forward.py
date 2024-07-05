@@ -110,6 +110,7 @@ class MixedForwardMap(EMA,nn.Module):
         else:
             continuous_sample = None
         return discrete_sample,continuous_sample
+    
     #====================================================================
     # RATES AND DRIFT for GENERATION
     #====================================================================
@@ -150,8 +151,14 @@ class MixedForwardMap(EMA,nn.Module):
             time = time.flatten()
 
         discrete_head,continuous_head = self.mixed_network(discrete_sample,continuous_sample,time)
-        rate = self.discrete_rate(discrete_head,discrete_sample,time)
-        drift = self.continuous_drift(continuous_head,continuous_sample,time)
+        if self.has_target_discrete:
+            rate = self.discrete_rate(discrete_head,discrete_sample,time)
+        else:
+            rate = None
+        if self.has_target_continuous:
+            drift = self.continuous_drift(continuous_head,continuous_sample,time)
+        else:
+            drift = None
         return rate,drift
     
     #====================================================================

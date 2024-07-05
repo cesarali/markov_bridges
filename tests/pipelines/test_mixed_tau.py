@@ -19,8 +19,10 @@ if __name__=="__main__":
     pipeline = CMBPipeline(model_config,cfm,dataloader)
     
     for databatch in dataloader.test():
-        generative_sample = pipeline.generate_sample(databatch)
-        
+        generative_sample = pipeline.generate_sample(databatch,return_path=True)
+        break
+    
+    print(generative_sample.discrete_paths.shape)
     #sampler = TauDiffusion(model_config,dataloader.join_context)
     #state, ts = sampler.sample(cfm,databatch,return_path=False)
     #print(state.discrete.shape)

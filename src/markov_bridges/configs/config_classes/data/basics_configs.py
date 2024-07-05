@@ -36,7 +36,7 @@ class MarkovBridgeDataConfig:
 class IndependentMixConfig(MarkovBridgeDataConfig):
     name:str = "IndependentMix"
     dataset_name:str = "independent_mix" 
-    vocab_size: int = 4
+    vocab_size: int = 3
 
     # variables model
     has_context_discrete: bool = False    
@@ -52,11 +52,12 @@ class IndependentMixConfig(MarkovBridgeDataConfig):
     source_continuous_type: str = "gaussian"
 
     target_dirichlet: float = 0.1
+    target_probability:list = field(default_factory=lambda:[])
     target_continuous_type: str = "moons" # gaussian,moons,8gaussian
 
-    total_data_size: int = 2200
+    total_data_size: int = 2500
     train_data_size: int = 2000
-    test_data_size: int = 200
+    test_data_size: int = 500
 
     batch_size:int = 32
 

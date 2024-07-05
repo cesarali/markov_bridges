@@ -22,20 +22,23 @@ class MixedTauState:
     number_of_paths: int = 0 
 
     def __init__(self, config:CMBConfig, state: MarkovBridgeDataNameTuple, join_context,save_ts=None):
+        self.has_target_continuous = config.data.has_target_continuous
+        self.has_target_discrete =  config.data.has_target_discrete
+
+        self.discrete_paths: torch.Tensor = []
+        self.continuous_paths: torch.Tensor = []
+        
         if config.data.has_target_discrete:
             self.discrete = state.source_discrete
-
             self.device = self.discrete.device
-            self.discrete_paths: torch.Tensor = []
             self.number_of_paths = self.discrete.size(0)
 
         if config.data.has_target_continuous:
             self.continuous = state.source_continuous
 
             self.device = self.continuous.device
-            self.continuous_paths: torch.Tensor = []
             self.number_of_paths = self.continuous.size(0)
-
+        
         self.save_ts = save_ts
         self.discrete,self.continuous = join_context(state,self.discrete,self.continuous)
 
@@ -44,12 +47,14 @@ class MixedTauState:
         self.continuous = new_continuos
     
     def update_paths(self, new_discrete, new_continuos):
-        self.discrete_paths.append(new_discrete.clone().detach().unsqueeze(1))
-        self.continuous_paths.append(new_continuos.clone().detach().unsqueeze(1))
+        if self.has_target_discrete:
+            self.discrete_paths.append(new_discrete.clone().detach().unsqueeze(1))
+        if self.has_target_continuous:
+            self.continuous_paths.append(new_continuos.clone().detach().unsqueeze(1))
     
     def concatenate_paths(self):
         if len(self.discrete_paths) > 0:
-            self.discrete_path = torch.cat(self.discrete_path, dim=1).float()
+            self.discrete_paths = torch.cat(self.discrete_paths, dim=1).float()
         if len(self.continuous_paths) > 0:
             self.continuous_paths = torch.cat(self.continuous_paths, dim=1).float()
 
@@ -57,6 +62,9 @@ class TauDiffusion:
     """
     This class performs the sample for mixed variables, combines a tau leaping step 
     for discrete variables and an euler mayorama step for continuous variables
+
+    If the return_path is set to True during sampling, the states at save_ts times will be stored.
+    save_ts is defined for the whole path if number_of_intermediaries is set to None
     """
     def __init__(self, config: CMBConfig, join_context):
         self.config = config
@@ -64,6 +72,7 @@ class TauDiffusion:
         self.S = config.data.vocab_size
         self.num_steps = config.pipeline.number_of_steps
         self.num_intermediates = config.pipeline.num_intermediates
+        self.max_rate_at_end = config.pipeline.max_rate_at_end
 
         self.time_epsilon = config.pipeline.time_epsilon
         self.min_t = 1./self.num_steps
@@ -73,6 +82,10 @@ class TauDiffusion:
         self.join_context = join_context
 
     def define_time(self, return_path):
+        """
+        If the return_path is set to True during sampling, the states at save_ts times will be stored.
+        save_ts is defined for the whole path if number_of_intermediaries is set to None
+        """
         # define time steps as well as the time where to save the paths
         ts = np.concatenate((np.linspace(1.0 - self.time_epsilon, self.min_t, self.num_steps), np.array([0])))
         if return_path:
@@ -149,21 +162,23 @@ class TauDiffusion:
             # LAST STEP
             last_time = self.min_t * torch.ones((state.number_of_paths,), device=state.device)
             rates, drift = forward_model.forward_map(state.discrete,
-                        state.continuous,
-                        last_time)
-            
+                                                     state.continuous,
+                                                     last_time)
             if self.has_target_discrete:
-                new_discrete = self.TauStep(rates, h, state, end=True)
+                new_discrete = self.TauStep(rates, h, state, end=self.max_rate_at_end)
             if self.has_target_continuous:
                 new_continuous = self.DiffusionStep(drift, h, state)
+            state.update_state(new_discrete, new_continuous)
 
             # SAVE LAST STEP
             if save_ts is not None:
                 state.update_paths(new_discrete, new_continuous)
-
+            state.concatenate_paths()
             return state
-        
-            
+                
     def get_time_vector(self, t, number_of_paths, device):
+        """
+        Simply repeats the time value to obtain a tensor in the right device
+        """
         times = t * torch.ones(number_of_paths,).to(device)
         return times

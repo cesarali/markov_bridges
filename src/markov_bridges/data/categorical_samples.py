@@ -160,9 +160,14 @@ class IndependentMixDataloader(MarkovBridgeDataloader):
         elif self.data_config.target_continuous_type == "moons":
             X_continuous,_ = sample_moons(total_size)
 
-        # Discrete 
-        dirichlet_alpha = torch.full((self.data_config.vocab_size,),self.data_config.target_dirichlet)
-        probability_per_dimension = Dirichlet(dirichlet_alpha).sample((self.data_config.discrete_dimensions,))
+        # Discrete
+        if len(self.data_config.target_probability) == 0:
+            dirichlet_alpha = torch.full((self.data_config.vocab_size,),self.data_config.target_dirichlet)
+            probability_per_dimension = Dirichlet(dirichlet_alpha).sample((self.data_config.discrete_dimensions,))    
+            self.data_config.target_probability = probability_per_dimension.tolist()
+        else:
+            probability_per_dimension = torch.Tensor(self.data_config.target_probability)
+            
         X_discrete  = Categorical(probability_per_dimension).sample((total_size,))
         return X_continuous,X_discrete
     

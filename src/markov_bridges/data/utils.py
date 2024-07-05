@@ -41,7 +41,6 @@ def sample_8gaussians(n):
     XY, labels = eight_normal_sample(n, 2, scale=5, var=0.1)
     return XY.float(),labels
 
-
 def sample_from_dataloader_iterator(dataloder_iterator,sample_size,flatten=True):
     """
     Samples data from the dataloader until the sample_size is met.
@@ -73,3 +72,14 @@ def sample_from_dataloader_iterator(dataloder_iterator,sample_size,flatten=True)
         x_0 = x_0.reshape(actual_sample_size, -1)
     return x_0
 
+def sample_discrete_target(dataloader,train=True,number_of_batches = 20):
+    data_sample = []
+    batch_index  = 0
+    for databatch in dataloader.train():
+        data_sample.append(databatch.target_discrete)
+        batch_index += 1
+        if batch_index >= number_of_batches:
+            break
+    data_sample = torch.cat(data_sample,dim=0).unsqueeze(1)
+    return data_sample
+    

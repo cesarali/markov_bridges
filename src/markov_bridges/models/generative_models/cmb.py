@@ -30,11 +30,12 @@ class CMB:
     
     if DEVICE is not provided it is obtained from the trainer config 
 
-    the actual torch model that contains the networks for sampling is specified in forward rate
+    the actual torch model that contains the networks for sampling is specified in forward map
     and contains all the mathematical elements.
 
-    the experiment folder is created in experiment files and has to be provided by hand, 
-    currently it is passed to the model by the trainer, it is only needed during training
+    the experiment folder is created in experiment files and has to be provided, 
+    currently it is passed to the model by the trainer, it is only needed during 
+    training
     """
     config: CMBConfig = None
     experiment_dir:str = None
@@ -46,7 +47,7 @@ class CMB:
     pipeline:CMBPipeline = None
     device: torch.device = None
     image_data_path: str = None
-    type_of_load:Union[str,int] = "best"
+    type_of_load:Union[str,int] = "last"
 
     def __post_init__(self):
         if self.experiment_dir is not None:

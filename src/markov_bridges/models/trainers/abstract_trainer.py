@@ -95,7 +95,7 @@ class Trainer(ABC):
 
         self.log_metrics = LogMetrics(self.generative_model,
                                       metrics_configs_list=self.config.trainer.metrics,
-                            debug=True)
+                            debug=self.config.trainer.debug)
     
     @abstractmethod
     def train_step(self, current_model, databatch, number_of_training_step):

@@ -1,14 +1,14 @@
 import torch
+from typing import Tuple
 import torch.nn.functional as F
+from dataclasses import dataclass
 from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.models.generative_models.cmb import CMB
 
-from typing import Tuple
 from markov_bridges.configs.config_classes.metrics.metrics_configs import (
     HellingerMetricConfig,
     MixedHellingerMetricConfig
 )
-from dataclasses import dataclass
 
 #===============================================
 # METRICS CLASSES
@@ -19,10 +19,9 @@ from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
 from markov_bridges.models.metrics.abstract_metrics import BasicMetric
 from markov_bridges.utils.plots.histograms_plots import plot_marginals_binary_histograms
-from markov_bridges.utils.plots.mix_histograms_plots import plot_categorical_histogram_per_dimension
+from markov_bridges.utils.plots.histograms_plots import plot_categorical_histogram_per_dimension
 from markov_bridges.utils.plots.mix_histograms_plots import plot_scatterplot
 from markov_bridges.models.pipelines.samplers.mixed_tau_diffusion import MixedTauState
-
 
 class HellingerMetric(BasicMetric):
     """
@@ -348,7 +347,8 @@ class MixedHellingerMetric(BasicMetric):
                 plot_path = self.plots_path.format("dimension_histograms_{0}".format(epoch))
             plot_categorical_histogram_per_dimension(self.noise_histogram,
                                                      self.real_histogram,
-                                                     self.generative_histogram)
+                                                     self.generative_histogram,
+                                                     save_path=plot_path)
 
         # Scatter plot
         if self.plot_continuous_variables:

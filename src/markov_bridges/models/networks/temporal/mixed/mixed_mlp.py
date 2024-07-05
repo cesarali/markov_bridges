@@ -25,8 +25,19 @@ class MixedDeepMLP(nn.Module):
     def __init__(self, config:CMBConfig, device):
         super().__init__()
         self.config = config
-        self.continuous_dim = config.data.continuos_dimensions
-        self.discrete_dim = config.data.discrete_dimensions
+        self.has_target_continuous = config.data.has_target_continuous
+        self.has_target_discrete = config.data.has_target_discrete
+
+        if self.has_target_discrete:
+            self.discrete_dim = config.data.discrete_dimensions
+        else:
+            self.discrete_dim = 0
+
+        if self.has_target_continuous:
+            self.continuous_dim = config.data.continuos_dimensions
+        else:
+            self.continuous_dim = 0
+        
         self.vocab_size = config.data.vocab_size
 
         self.define_deep_models(config)
@@ -61,20 +72,43 @@ class MixedDeepMLP(nn.Module):
         self.continuous_head = nn.Linear(self.hidden_layer, self.continuous_dim)
 
     def forward(self,x_discrete,x_continuous, times):
-        x_discrete = x_discrete.long()
+        # MAKE SURE THE TIME IS 1D
         if len(times.shape) > 1:
             times = times.flatten()
 
-        batch_size = x_continuous.shape[0]
-        x_discrete_embedded = self.embedding(x_discrete)
-        x_discrete_embedded = x_discrete_embedded.view(batch_size, -1)
-        x_combined = torch.cat([x_continuous, x_discrete_embedded], dim=1)
+        if self.has_target_discrete:
+            batch_size = x_discrete.shape[0]
+            x_discrete = x_discrete.long()
+            x_discrete_embedded = self.embedding(x_discrete)
+            x_discrete_embedded = x_discrete_embedded.view(batch_size, -1)
+
+        # Conditional concatenation
+        if self.has_target_continuous and self.has_target_discrete:
+            x_combined = torch.cat([x_continuous, x_discrete_embedded], dim=1)
+        elif self.has_target_continuous:
+            x_combined = x_continuous
+            batch_size = x_continuous.shape[0]
+        elif self.has_target_discrete:
+            x_combined = x_discrete_embedded
+        else:
+            raise ValueError("At least one of has_continuous or has_discrete must be True")
+        
+        # Encode both variables
         time_embeddings = transformer_timestep_embedding(times, embedding_dim=self.time_embed_dim)
         x_full = torch.cat([x_combined, time_embeddings], dim=1)
         rate_logits = self.encoding_model(x_full)
 
-        continuous_head = self.continuous_head(rate_logits)
-        discrete_head = self.discrete_head(rate_logits).reshape(batch_size,self.discrete_dim,self.vocab_size)
+        # Obtain Head
+        if self.has_target_continuous:
+            continuous_head = self.continuous_head(rate_logits)
+        else:
+            continuous_head = None
+        
+        if self.has_target_discrete:
+            discrete_head = self.discrete_head(rate_logits).reshape(batch_size,self.discrete_dim,self.vocab_size)
+        else:
+            discrete_head = None
+
         return discrete_head,continuous_head
 
     def init_weights(self):
