@@ -3,6 +3,7 @@ import numpy as np
 from tqdm import tqdm
 from typing import Union, Tuple
 from torch import functional as F
+from torch.distributions import Normal
 
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.models.generative_models.cmb_forward import MixedForwardMap
@@ -118,8 +119,16 @@ class TauDiffusion:
             x_new = torch.max(rates, dim=2)[1]
         return x_new
 
-    def DiffusionStep(self, drift, h, state: MixedTauState):
-        return None
+    def DiffusionStep(self, drift, dt, state: MixedTauState):
+        #x_mean = x + drift * dt
+        #x = x_mean + diffusion[:, None, None, None] * np.sqrt(-dt) * z
+
+        x_mean = state.continuous + drift*dt
+        z = torch.randn_like(x_mean)
+        x = x_mean + np.sqrt(dt) * z
+        return x
+
+
     
     def sample(self,
                forward_model: Union[MixedForwardMap],

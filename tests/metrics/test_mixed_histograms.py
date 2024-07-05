@@ -11,15 +11,12 @@ from markov_bridges.configs.config_classes.metrics.metrics_configs import (
 )
 
 if __name__=="__main__":
-
     model_config = CMBConfig()
-    model_config.data = IndependentMixConfig(has_context_continuous=True)
+    model_config.data = IndependentMixConfig()
     cmb = CMB(model_config)
-
     log_metrics = LogMetrics(cmb,
                              metrics_configs_list=[MixedHellingerMetricConfig(plot_histogram=True,
                                                                               plot_continuous_variables=True)],
-                             debug=True)
-    
+                             debug=False)
     all_metrics = log_metrics(cmb,None)
     print(all_metrics)

@@ -51,15 +51,15 @@ class IndependentMixConfig(MarkovBridgeDataConfig):
     source_discrete_type: str = "uniform"
     source_continuous_type: str = "gaussian"
 
-    target_dirichlet: float = 0.1
+    target_dirichlet: float = 0.5
     target_probability:list = field(default_factory=lambda:[])
     target_continuous_type: str = "moons" # gaussian,moons,8gaussian
 
-    total_data_size: int = 2500
+    total_data_size: int = 3500
     train_data_size: int = 2000
-    test_data_size: int = 500
+    test_data_size: int = 1500
 
-    batch_size:int = 32
+    batch_size:int = 64
 
     def __post_init__(self):
         if self.has_context_continuous:

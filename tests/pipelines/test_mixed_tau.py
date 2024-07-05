@@ -12,7 +12,7 @@ import torch
 
 if __name__=="__main__":
     model_config = CMBConfig()
-    model_config.data = IndependentMixConfig(has_context_continuous=True)
+    model_config.data = IndependentMixConfig()
     dataloader = IndependentMixDataloader(model_config.data)
     databatch = dataloader.get_databatch()
     cfm = MixedForwardMap(model_config,device=torch.device("cpu"),join_context=dataloader.join_context)

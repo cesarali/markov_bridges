@@ -11,21 +11,25 @@ from markov_bridges.configs.config_classes.metrics.metrics_configs import (
 
 def get_independent_mix_experiment():
     model_config = CMBConfig()
-    model_config.data = IndependentMixConfig(has_context_continuous=True,target_dirichlet=0.5)
-    model_config.mixed_network = MixedDeepMLPConfig(num_layers=1,hidden_dim=150,time_embed_dim=50,discrete_embed_dim=10)
-    model_config.trainer = CMBTrainerConfig(number_of_epochs=30,
+    model_config.data = IndependentMixConfig(has_context_continuous=False,
+                                             target_continuous_type="8gaussian",
+                                             target_dirichlet=0.5)
+    model_config.mixed_network = MixedDeepMLPConfig(num_layers=2,
+                                                    hidden_dim=150,
+                                                    time_embed_dim=50,
+                                                    discrete_embed_dim=50)
+    model_config.trainer = CMBTrainerConfig(number_of_epochs=200,
                                             debug=False,
-                                            learning_rate=1e-3)
+                                            learning_rate=1e-4)
     model_config.trainer.metrics = [MixedHellingerMetricConfig(plot_histogram=True,
                                                                plot_continuous_variables=True)]
-    model_config.pipeline = BasicPipelineConfig(number_of_steps=200)
+    model_config.pipeline = BasicPipelineConfig(number_of_steps=1000)
     return model_config
 
 if __name__=="__main__":
     experiment_files = ExperimentFiles(experiment_name="cmb",
                                        experiment_type="independent") 
     model_config = get_independent_mix_experiment()
-
     trainer = CMBTrainer(config=model_config,
                          experiment_files=experiment_files)
     trainer.train()
