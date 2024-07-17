@@ -23,7 +23,7 @@ def get_independent_mix_experiment():
                                             learning_rate=1e-4)
     model_config.trainer.metrics = [MixedHellingerMetricConfig(plot_histogram=True,
                                                                plot_continuous_variables=True)]
-    model_config.pipeline = BasicPipelineConfig(number_of_steps=1000)
+    model_config.pipeline = BasicPipelineConfig(number_of_steps=200)
     return model_config
 
 if __name__=="__main__":

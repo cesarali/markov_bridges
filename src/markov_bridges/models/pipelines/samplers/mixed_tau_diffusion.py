@@ -122,14 +122,11 @@ class TauDiffusion:
     def DiffusionStep(self, drift, dt, state: MixedTauState):
         #x_mean = x + drift * dt
         #x = x_mean + diffusion[:, None, None, None] * np.sqrt(-dt) * z
-
         x_mean = state.continuous + drift*dt
         z = torch.randn_like(x_mean)
         x = x_mean + np.sqrt(dt) * z
         return x
 
-
-    
     def sample(self,
                forward_model: Union[MixedForwardMap],
                state_0: MarkovBridgeDataNameTuple,
