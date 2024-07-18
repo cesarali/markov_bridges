@@ -9,7 +9,9 @@ from torch.nn import init
 
 from torch_geometric.utils import dense_to_sparse,unbatch
 from torch_geometric.data import Data
-from conditional_rate_matching.configs.configs_classes.config_crm import CRMConfig
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+from markov_bridges.models.networks.temporal.temporal_embeddings import transformer_timestep_embedding
+
 
 def sample_to_geometric(X,number_of_nodes=20):
     """
@@ -24,7 +26,7 @@ def sample_to_geometric(X,number_of_nodes=20):
     return nodes_attributes,edge_index,batch
     
 class SimpleTemporalGCN(torch.nn.Module):
-    def __init__(self,config:CRMConfig):
+    def __init__(self,config:CJBConfig):
         super(SimpleTemporalGCN, self).__init__()
 
         self.number_of_nodes = config.data1.max_node_num

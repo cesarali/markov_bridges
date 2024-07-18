@@ -3,7 +3,7 @@ from pprint import pprint
 from dataclasses import dataclass,asdict
 from torch.distributions import Categorical
 from torch.utils.data import TensorDataset,DataLoader
-from conditional_rate_matching.data.states_dataloaders_config import StatesDataloaderConfig
+from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -22,7 +22,7 @@ from markov_bridges.data.utils import sample_8gaussians, sample_moons
 from torch.distributions import Categorical,Normal,Dirichlet
 from torch.utils.data import DataLoader
 
-def set_probabilities(config:StatesDataloaderConfig,return_tensor_samples=False):
+def set_probabilities(config:IndependentMixConfig,return_tensor_samples=False):
     """
 
     :param probs:

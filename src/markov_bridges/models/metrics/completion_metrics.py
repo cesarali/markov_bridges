@@ -1,10 +1,8 @@
 import torch
 import numpy as np
 from torch.nn import functional as F
-from conditional_rate_matching.configs.configs_classes.config_crm import CRMConfig
-from conditional_rate_matching.models.generative_models.crm import CRM
-from conditional_rate_matching.configs.configs_classes.config_crm import CRMConfig
 
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
 #===============================================
 # METRICS FUNCTIONS
@@ -38,7 +36,7 @@ def hellinger_distance_function(hist1, hist2):
     return hellinger_distance
 
 
-def hellinger_distance(generative,original,config:CRMConfig):
+def hellinger_distance(generative,original,config:CJBConfig):
     conditional_dimension = config.data1.conditional_dimension
     vocab_size = config.data1.vocab_size
 
@@ -81,7 +79,7 @@ def outlier_per_song(generated_song_notes, real_song_notes,config):
     return total_proportion, outliers_per_song
 
 
-def outliers(generative,original,config:CRMConfig):
+def outliers(generative,original,config:CJBConfig):
     number_of_songs = generative.size(0)
 
     total_proportion_list = []

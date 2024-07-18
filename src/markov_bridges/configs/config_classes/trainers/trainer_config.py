@@ -4,9 +4,6 @@ from dataclasses import dataclass,field
 from markov_bridges import project_path
 from markov_bridges.configs.config_classes.metrics.metrics_configs import metrics_config
 
-ORCA_DIR_STANDARD = project_path / "src" / "conditional_rate_matching" / "models" / "metrics" / "orca"
-ORCA_DIR_STANDARD = str(ORCA_DIR_STANDARD)
-
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.optim.lr_scheduler import MultiStepLR

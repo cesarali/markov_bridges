@@ -28,7 +28,7 @@ from markov_bridges.data.qm9.data.utils import initialize_datasets
 from markov_bridges.utils.graphs_utils import graphs_to_tensor
 from markov_bridges.data.transforms import get_transforms,get_expected_shape
 
-QM9PointDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous time")
+QM9PointDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous nodes_dist node_mask edge_mask time")
 
 class QM9PointDataloader(MarkovBridgeDataloader):
     qm9_config : QM9Config

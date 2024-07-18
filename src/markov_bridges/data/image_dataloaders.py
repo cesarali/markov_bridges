@@ -1,21 +1,19 @@
 import os
 import torch
 from pathlib import Path
-from conditional_rate_matching.configs.configs_classes.config_crm import CRMConfig
-from conditional_rate_matching.data.image_dataloader_config import DiscreteCIFAR10Config
+
 import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms,datasets
-from conditional_rate_matching.data.transforms import SqueezeTransform
-from conditional_rate_matching.data.transforms import FlattenTransform
-from conditional_rate_matching.data.transforms import CorrectEMNISTOrientation
-from conditional_rate_matching.data.transforms import BinaryTensorToSpinsTransform
-from conditional_rate_matching.data.image_dataloader_config import NISTLoaderConfig
 from torch.utils.data import Subset
 import torchvision
-from conditional_rate_matching.data.image_dataloader_config import DiscreteCIFAR10Config
 
+from markov_bridges.data.transforms import (
+    CorrectEMNISTOrientation,
+    FlattenTransform,
+    SqueezeTransform
+)
 
 def get_data(config:NISTLoaderConfig):
     data_= config.dataset_name
@@ -175,12 +173,4 @@ class DiscreteCIFAR10Dataloader():
 
     def test(self):
         return self.test_dataloader
-
-if __name__ =="__main__":
-    from conditional_rate_matching.data.image_dataloader_config import NISTLoaderConfig
-
-    data_config = NISTLoaderConfig(flatten=False,batch_size=23)
-    dataloder,_ = get_data(data_config)
-    databatch = next(dataloder.__iter__())
-
 

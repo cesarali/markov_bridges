@@ -4,12 +4,8 @@ from tqdm import tqdm
 from typing import Union
 from torch import functional as F
 
-from conditional_rate_matching.configs.configs_classes.config_crm import CRMConfig
-from conditional_rate_matching.configs.configs_classes.config_dsb import DSBConfig
-from conditional_rate_matching.configs.configs_classes.config_ctdd import CTDDConfig
-from conditional_rate_matching.models.temporal_networks.rates.dsb_rate import SchrodingerBridgeRate
-from conditional_rate_matching.models.temporal_networks.rates.crm_rates import ClassificationForwardRate
-
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
 def set_diagonal_rate(rates,x):
     """
     Ensures that we have the right diagonal rate
@@ -33,8 +29,8 @@ def set_diagonal_rate(rates,x):
 
     return  x_0max,rates
 
-def TauLeaping(config:Union[DSBConfig,CTDDConfig,CRMConfig],
-               rate_model:Union[ClassificationForwardRate,SchrodingerBridgeRate],
+def TauLeaping(config:Union[CJBConfig],
+               rate_model:Union[ClassificationForwardRate],
                x_0:torch.Tensor,
                forward=True,
                return_path=False):
@@ -128,8 +124,8 @@ def TauLeaping(config:Union[DSBConfig,CTDDConfig,CRMConfig],
 
         return x_0max.detach().float(), x_hist, x0_hist, torch.Tensor(save_ts.copy()).to(device)
 
-def TauLeapingRates(config:Union[DSBConfig,CTDDConfig,CRMConfig],
-                    rate_model:Union[ClassificationForwardRate,SchrodingerBridgeRate],
+def TauLeapingRates(config:Union[CJBConfig],
+                    rate_model:Union[ClassificationForwardRate],
                     x_0:torch.Tensor,
                     forward=True,
                     return_path=False):

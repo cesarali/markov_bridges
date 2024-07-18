@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from conditional_rate_matching import plots_path
+from markov_bridges import plots_path
 
 #warnings.filterwarnings("ignore", category=matplotlib.cbook.MatplotlibDeprecationWarning)
 
