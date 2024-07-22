@@ -18,11 +18,11 @@ def get_independent_mix_experiment():
                                                     hidden_dim=150,
                                                     time_embed_dim=50,
                                                     discrete_embed_dim=50)
-    model_config.trainer = CMBTrainerConfig(number_of_epochs=200,
+    
+    model_config.trainer = CMBTrainerConfig(number_of_epochs=20,
                                             debug=False,
                                             learning_rate=1e-4)
-    model_config.trainer.metrics = [MixedHellingerMetricConfig(plot_histogram=True,
-                                                               plot_continuous_variables=True)]
+    model_config.trainer.metrics = []
     model_config.pipeline = BasicPipelineConfig(number_of_steps=200)
     return model_config
 

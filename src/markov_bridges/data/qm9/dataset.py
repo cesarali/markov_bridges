@@ -1,11 +1,12 @@
+
 from torch.utils.data import DataLoader
+from markov_bridges.configs.config_classes.data.molecules_configs import QM9Config
 from markov_bridges.data.qm9.data.args import init_argparse
 from markov_bridges.data.qm9.data.collate import PreprocessQM9
 from markov_bridges.data.qm9.data.utils import initialize_datasets
 import os
 
-
-def retrieve_dataloaders(cfg):
+def retrieve_dataloaders(cfg:QM9Config):
     if 'qm9' in cfg.dataset:
         batch_size = cfg.batch_size
         num_workers = cfg.num_workers
@@ -17,7 +18,11 @@ def retrieve_dataloaders(cfg):
                                                                   cfg.dataset,
                                                                   subtract_thermo=cfg.subtract_thermo,
                                                                   force_download=cfg.force_download,
-                                                                  remove_h=cfg.remove_h)
+                                                                  remove_h=cfg.remove_h,
+                                                                  num_pts_train= cfg.num_pts_train,
+                                                                  num_pts_valid=cfg.num_pts_valid,
+                                                                  num_pts_test=cfg.num_pts_test)
+        
         qm9_to_eV = {'U0': 27.2114, 'U': 27.2114, 'G': 27.2114, 'H': 27.2114, 'zpve': 27211.4, 'gap': 27.2114, 'homo': 27.2114,
                      'lumo': 27.2114}
 
@@ -36,6 +41,7 @@ def retrieve_dataloaders(cfg):
                                          num_workers=num_workers,
                                          collate_fn=preprocess.collate_fn)
                              for split, dataset in datasets.items()}
+        
     elif 'geom' in cfg.dataset:
         import build_geom_dataset
         from configs.datasets_config import get_dataset_info

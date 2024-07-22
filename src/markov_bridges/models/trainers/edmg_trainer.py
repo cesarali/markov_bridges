@@ -4,16 +4,7 @@ from tqdm import tqdm
 from torch.optim.adam import Adam
 from torch.utils.tensorboard import SummaryWriter
 
-from typing import List
-from dataclasses import dataclass,field
-from markov_bridges.utils.experiment_files import ExperimentFiles
-
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.optim.lr_scheduler import ExponentialLR
-from torch.optim.lr_scheduler import MultiStepLR
-from torch.optim.lr_scheduler import StepLR
-
-
+import markov_bridges.data.qm9.utils as qm9utils
 from markov_bridges.models.generative_models.edmg import EDMG
 
 import torch
@@ -28,8 +19,13 @@ from markov_bridges.utils.equivariant_diffusion import (
     assert_mean_zero_with_mask, 
     remove_mean_with_mask,
     assert_correctly_masked, 
-    sample_center_gravity_zero_gaussian_with_mask
+    sample_center_gravity_zero_gaussian_with_mask,
+    random_rotation,
+    gradient_clipping,
+    Queue
 )
+
+from markov_bridges.data.qm9.utils import prepare_context, compute_mean_mad
 
 def check_mask_correct(variables, node_mask):
     for i, variable in enumerate(variables):
@@ -42,7 +38,7 @@ class EDMGTrainer(Trainer):
     generative_model_class = EDMG
     name_ = "conditional_jump_bridge_trainer"
 
-    def __init__(self,config=None,experiment_files=None,cjb=None,experiment_dir=None,starting_type="last"):
+    def __init__(self,config=None,experiment_files=None,edmg=None,experiment_dir=None,starting_type="last"):
         """
         If experiment dir is provided, he loads the model from that folder and then creates
         a new folder 
@@ -60,20 +56,25 @@ class EDMGTrainer(Trainer):
             self.generative_model = EDMG(experiment_dir=experiment_dir,type_of_load=starting_type)
             self.generative_model.experiment_files = experiment_files
             self.config = self.generative_model.config
+            self.noising_model_config = self.config.noising_model
+            self.data_config = self.config.data
             self.number_of_epochs = self.config.trainer.number_of_epochs
             device_str = self.config.trainer.device
             self.device = torch.device(device_str if torch.cuda.is_available() else "cpu")
         else:
             self.config = config
+            self.noising_model_config = self.config.noising_model
+            self.data_config = self.config.data
             self.number_of_epochs = self.config.trainer.number_of_epochs
             device_str = self.config.trainer.device
             self.device = torch.device(device_str if torch.cuda.is_available() else "cpu")
-            if cjb is None:
+            if edmg is None:
                 self.generative_model = EDMG(self.config, experiment_files=experiment_files, device=self.device)
             else:
-                self.generative_model = cjb
+                self.generative_model = edmg
                 self.dataloader = self.generative_model.dataloader
-
+        self.dtype = torch.float32
+        
     def preprocess_data(self, databatch):    
         return databatch
 
@@ -82,7 +83,7 @@ class EDMGTrainer(Trainer):
         self.generative_model.noising_model
     
     def get_model(self):
-        return self.generative_model.forward_map.mixed_network
+        return self.generative_model.noising_model
 
     def initialize(self):
         """
@@ -93,50 +94,63 @@ class EDMGTrainer(Trainer):
             self.do_ema = True
 
         self.generative_model.start_new_experiment()
-
         #DEFINE OPTIMIZERS
-        self.optimizer = Adam(self.generative_model.forward_map.parameters(),
+        self.optimizer = Adam(self.generative_model.noising_model.parameters(),
                               lr=self.config.trainer.learning_rate,
+                              amsgrad=self.config.trainer.amsgrad,
                               weight_decay=self.config.trainer.weight_decay)
         
         self.lr = self.config.trainer.learning_rate
 
-        if self.config.data.has_context_discrete:
-            self.conditional_dimension = self.config.data.context_discrete_dimension
-            self.generation_dimension = self.config.data.discrete_dimensions - self.conditional_dimension
+        #==================================================
+        #data_dummy = next(self.dataloader.train().__iter__())
 
+        if len(self.noising_model_config.conditioning) > 0:
+            print(f'Conditioning on {self.noising_model_config.conditioning}')
+            self.property_norms = compute_mean_mad(self.dataloader, 
+                                                   self.noising_model_config.conditioning, 
+                                                   self.data_config.dataset)
+            #context_dummy = prepare_context(self.noising_model_config.conditioning, data_dummy, property_norms)
+            #context_node_nf = context_dummy.size(2)
+        else:
+            context_node_nf = 0
+            property_norms = None
+
+        self.config.noising_model.context_node_nf = context_node_nf
+
+        self.gradnorm_queue = Queue()
+        self.gradnorm_queue.add(3000)  # Add large value that will be flushed.
+        
         return np.inf
 
     def train_step(self,databatch:MarkovBridgeDataNameTuple, number_of_training_step,  epoch):
-        #model_dp.train()
-        #model.train()
-        #nll_epoch = []
-        #n_iterations = len(loader)
+        self.generative_model.noising_model.train()
 
         x = databatch['positions'].to(self.device, self.dtype)
         node_mask = databatch['atom_mask'].to(self.device, self.dtype).unsqueeze(2)
         edge_mask = databatch['edge_mask'].to(self.device, self.dtype)
         one_hot = databatch['one_hot'].to(self.device, self.dtype)
-        charges = (databatch['charges'] if args.include_charges else torch.zeros(0)).to(self.device, self.dtype)
+        charges = (databatch['charges'] if self.data_config.include_charges else torch.zeros(0)).to(self.device, self.dtype)
 
+        # add noise 
         x = remove_mean_with_mask(x, node_mask)
-
-        if args.augment_noise > 0:
+        if self.noising_model_config.augment_noise > 0:
             # Add noise eps ~ N(0, augment_noise) around points.
             eps = sample_center_gravity_zero_gaussian_with_mask(x.size(), x.device, node_mask)
-            x = x + eps * args.augment_noise
-
+            x = x + eps * self.noising_model_config.augment_noise
         x = remove_mean_with_mask(x, node_mask)
-        if args.data_augmentation:
-            x = utils.random_rotation(x).detach()
+        if self.noising_model_config.data_augmentation:
+            x = random_rotation(x).detach()
 
         check_mask_correct([x, one_hot, charges], node_mask)
         assert_mean_zero_with_mask(x, node_mask)
 
         h = {'categorical': one_hot, 'integer': charges}
 
-        if len(args.conditioning) > 0:
-            context = qm9utils.prepare_context(args.conditioning, data, property_norms).to(device, dtype)
+        if len(self.noising_model_config.conditioning) > 0:
+            context = qm9utils.prepare_context(self.noising_model_config.conditioning, 
+                                               databatch, 
+                                               self.property_norms).to(self.device, self.dtype)
             assert_correctly_masked(context, node_mask)
         else:
             context = None
@@ -144,13 +158,20 @@ class EDMGTrainer(Trainer):
         self.optimizer.zero_grad()
 
         # transform batch through flow
-        nll, reg_term, mean_abs_z = self.generative_model.noising_model.loss(databatch)
+        nll, reg_term, mean_abs_z = self.generative_model.noising_model.loss(x, 
+                                                                             h, 
+                                                                             node_mask, 
+                                                                             edge_mask, 
+                                                                             context,
+                                                                             self.generative_model.nodes_dist)
+        
         # standard nll from forward KL
-        loss = nll + args.ode_regularization * reg_term
+        loss = nll + self.noising_model_config.ode_regularization * reg_term
         loss.backward()
 
-        if args.clip_grad:
-            grad_norm = utils.gradient_clipping(model, gradnorm_queue)
+        if self.config.trainer.clip_grad:
+            grad_norm = gradient_clipping(self.generative_model.noising_model, 
+                                          self.gradnorm_queue)
         else:
             grad_norm = 0.
 
@@ -183,21 +204,48 @@ class EDMGTrainer(Trainer):
         #        vis.visualize_chain("outputs/%s/epoch_%d/conditional/" % (args.exp_name, epoch), dataset_info,
         #                            wandb=wandb, mode='conditional')
 
-        return loss
+        return nll
 
     def test_step(self,databatch:MarkovBridgeDataNameTuple, number_of_test_step,epoch):
+        self.generative_model.noising_model.eval()
         with torch.no_grad():
-            # gpu handling
-            databatch = nametuple_to_device(databatch, self.device)
+            x = databatch['positions'].to(self.device, self.dtype)
+            node_mask = databatch['atom_mask'].to(self.device, self.dtype).unsqueeze(2)
+            edge_mask = databatch['edge_mask'].to(self.device, self.dtype)
+            one_hot = databatch['one_hot'].to(self.device, self.dtype)
+            charges = (databatch['charges'] if self.data_config.include_charges else torch.zeros(0)).to(self.device, self.dtype)
 
-            # data pair and time sample
-            discrete_sample,continuous_sample = self.generative_model.forward_map.sample_bridge(databatch)
+            if self.noising_model_config.augment_noise > 0:
+                # Add noise eps ~ N(0, augment_noise) around points.
+                eps = sample_center_gravity_zero_gaussian_with_mask(x.size(),
+                                                                    x.device,
+                                                                    node_mask)
+                x = x + eps * self.noising_model_config.augment_noise
 
-            # sample x from z
-            loss_ = self.generative_model.forward_map.loss(databatch,discrete_sample,continuous_sample)
+            x = remove_mean_with_mask(x, node_mask)
+            check_mask_correct([x, one_hot, charges], node_mask)
+            assert_mean_zero_with_mask(x, node_mask)
+
+            h = {'categorical': one_hot, 'integer': charges}
+
+            if len(self.noising_model_config.conditioning) > 0:
+                context = qm9utils.prepare_context(self.noising_model_config.conditioning, 
+                                                   databatch, 
+                                                   self.property_norms).to(self.device, self.dtype)
+                assert_correctly_masked(context, node_mask)
+            else:
+                context = None
+
+            # transform batch through flow
+            nll, _, _ = self.generative_model.noising_model.loss(x,
+                                                                 h, 
+                                                                 node_mask, 
+                                                                 edge_mask, 
+                                                                 context,
+                                                                 self.generative_model.nodes_dist)
+
+        return nll
+
         
-            self.writer.add_scalar('test loss', loss_.item(), number_of_test_step)
-
-        return loss_
 
             

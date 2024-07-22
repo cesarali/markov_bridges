@@ -1,11 +1,13 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from equivariant_diffusion.utils import assert_mean_zero_with_mask, remove_mean_with_mask,\
+from markov_bridges.utils.equivariant_diffusion import (
+    assert_mean_zero_with_mask, 
+    remove_mean_with_mask,
     assert_correctly_masked
+)
 from markov_bridges.data.qm9.analyze import check_stability
-
-
+from markov_bridges.configs.config_classes.generative_models.edmg_config import EDMGConfig
 def rotate_chain(z):
     assert z.size(0) == 1
 
@@ -51,17 +53,17 @@ def reverse_tensor(x):
     return x[torch.arange(x.size(0) - 1, -1, -1)]
 
 
-def sample_chain(args, device, flow, n_tries, dataset_info, prop_dist=None):
+def sample_chain(config:EDMGConfig, device, flow, n_tries, dataset_info, prop_dist=None):
     n_samples = 1
-    if args.dataset == 'qm9' or args.dataset == 'qm9_second_half' or args.dataset == 'qm9_first_half':
+    if config.data.dataset == 'qm9' or config.data.dataset == 'qm9_second_half' or config.data.dataset == 'qm9_first_half':
         n_nodes = 19
-    elif args.dataset == 'geom':
+    elif config.data.dataset == 'geom':
         n_nodes = 44
     else:
         raise ValueError()
 
     # TODO FIX: This conditioning just zeros.
-    if args.context_node_nf > 0:
+    if config.noising_model.context_node_nf > 0:
         context = prop_dist.sample(n_nodes).unsqueeze(1).unsqueeze(0)
         context = context.repeat(1, n_nodes, 1).to(device)
         #context = torch.zeros(n_samples, n_nodes, args.context_node_nf).to(device)
@@ -73,36 +75,32 @@ def sample_chain(args, device, flow, n_tries, dataset_info, prop_dist=None):
     edge_mask = (1 - torch.eye(n_nodes)).unsqueeze(0)
     edge_mask = edge_mask.repeat(n_samples, 1, 1).view(-1, 1).to(device)
 
-    if args.probabilistic_model == 'diffusion':
-        one_hot, charges, x = None, None, None
-        for i in range(n_tries):
-            chain = flow.sample_chain(n_samples, n_nodes, node_mask, edge_mask, context, keep_frames=100)
-            chain = reverse_tensor(chain)
+    one_hot, charges, x = None, None, None
+    for i in range(n_tries):
+        chain = flow.sample_chain(n_samples, n_nodes, node_mask, edge_mask, context, keep_frames=100)
+        chain = reverse_tensor(chain)
 
-            # Repeat last frame to see final sample better.
-            chain = torch.cat([chain, chain[-1:].repeat(10, 1, 1)], dim=0)
-            x = chain[-1:, :, 0:3]
-            one_hot = chain[-1:, :, 3:-1]
-            one_hot = torch.argmax(one_hot, dim=2)
+        # Repeat last frame to see final sample better.
+        chain = torch.cat([chain, chain[-1:].repeat(10, 1, 1)], dim=0)
+        x = chain[-1:, :, 0:3]
+        one_hot = chain[-1:, :, 3:-1]
+        one_hot = torch.argmax(one_hot, dim=2)
 
-            atom_type = one_hot.squeeze(0).cpu().detach().numpy()
-            x_squeeze = x.squeeze(0).cpu().detach().numpy()
-            mol_stable = check_stability(x_squeeze, atom_type, dataset_info)[0]
+        atom_type = one_hot.squeeze(0).cpu().detach().numpy()
+        x_squeeze = x.squeeze(0).cpu().detach().numpy()
+        mol_stable = check_stability(x_squeeze, atom_type, dataset_info)[0]
 
-            # Prepare entire chain.
-            x = chain[:, :, 0:3]
-            one_hot = chain[:, :, 3:-1]
-            one_hot = F.one_hot(torch.argmax(one_hot, dim=2), num_classes=len(dataset_info['atom_decoder']))
-            charges = torch.round(chain[:, :, -1:]).long()
+        # Prepare entire chain.
+        x = chain[:, :, 0:3]
+        one_hot = chain[:, :, 3:-1]
+        one_hot = F.one_hot(torch.argmax(one_hot, dim=2), num_classes=len(dataset_info['atom_decoder']))
+        charges = torch.round(chain[:, :, -1:]).long()
 
-            if mol_stable:
-                print('Found stable molecule to visualize :)')
-                break
-            elif i == n_tries - 1:
-                print('Did not find stable molecule, showing last sample.')
-
-    else:
-        raise ValueError
+        if mol_stable:
+            print('Found stable molecule to visualize :)')
+            break
+        elif i == n_tries - 1:
+            print('Did not find stable molecule, showing last sample.')
 
     return one_hot, charges, x
 

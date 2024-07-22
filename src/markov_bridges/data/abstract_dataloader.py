@@ -175,6 +175,7 @@ class MarkovBridgeDataloader:
     def test(self):
         return self.test_dataloader
     
+    
     def get_data_sample(self,sample_size:int,train:bool=True)->MarkovBridgeDataNameTuple:
         """
         Aggregates data from the dataloader until the sample_size is met.

@@ -20,6 +20,8 @@ from markov_bridges.models.generative_models.edmg_noising import EquivariantDiff
 from markov_bridges.configs.config_classes.generative_models.edmg_config import EDMGConfig
 
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
+from markov_bridges.models.networks.temporal.edmg.edmg_utils import get_edmg_model
+from markov_bridges.models.networks.temporal.edmg.en_diffusion import EnVariationalDiffusion
 
 @dataclass
 class EDMG:
@@ -35,12 +37,12 @@ class EDMG:
     currently it is passed to the model by the trainer, it is only needed during 
     training
     """
-    config: CMBConfig = None
+    config: EDMGConfig = None
     experiment_dir:str = None
 
     experiment_files: ExperimentFiles = None
     dataloader: Union[QM9PointDataloader] = None
-    noising_model: Union[EquivariantDiffussionNoising] = None
+    noising_model: Union[EnVariationalDiffusion] = None
     pipeline:CMBPipeline = None
     device: torch.device = None
     image_data_path: str = None
@@ -65,8 +67,12 @@ class EDMG:
         else:
             self.device = device
         
-        self.forward_map = MixedForwardMap(self.config, self.device,self.dataloader.join_context).to(self.device)
-        self.pipeline = CMBPipeline(self.config,self.forward_map,self.dataloader)
+        self.noising_model,self.nodes_dist, self.prop_dist = get_edmg_model(config,
+                                                                            self.dataloader.dataset_info,
+                                                                            self.dataloader.dataloaders['train'],
+                                                                            device)
+
+        self.pipeline = None
 
     def load_from_experiment(self,experiment_dir,device=None,set_data_path=None):
         self.experiment_files = ExperimentFiles(experiment_dir=experiment_dir)
@@ -75,7 +81,7 @@ class EDMG:
         config_path_json = json.load(open(self.experiment_files.config_path, "r"))
         if hasattr(config_path_json,"delete"):
             config_path_json["delete"] = False
-        self.config = CMBConfig(**config_path_json)
+        self.config = EDMGConfig (**config_path_json)
         if device is None:
             self.device = torch.device(self.config.trainer.device) if torch.cuda.is_available() else torch.device("cpu")
         else:
@@ -97,13 +103,11 @@ class EDMG:
         self.config.trainer.number_of_training_steps = number_of_training_steps + 1
 
         # set forward model
-        self.forward_map = MixedForwardMap(self.config,self.device,self.dataloader.join_context).to(self.device)
-        self.forward_map.mixed_network = results_["model"]
-        self.forward_map = self.forward_map.to(self.device)
-        self.forward_map.mixed_network = self.forward_map.mixed_network.to(self.device)
+        self.noising_model = results_["model"]
+        self.noising_model = self.noising_model.to(self.device)
 
         # define pipeline
-        self.pipeline = CMBPipeline(self.config,self.forward_map,self.dataloader)
+        self.pipeline = None
 
         return epoch,number_of_training_steps,number_of_test_step
     

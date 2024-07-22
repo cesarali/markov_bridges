@@ -38,6 +38,7 @@ class EquivariantDiffussionNoising(EMA,nn.Module):
         nn.Module.__init__(self)
 
         self.config = config
+        self.noising_config = config.noising_model
         config_data = config.data
 
         self.vocab_size = config_data.vocab_size
@@ -61,8 +62,13 @@ class EquivariantDiffussionNoising(EMA,nn.Module):
         
         self.nodes_dist = Normal(0.,1.)
 
+        self.device = device
         self.to(device)
         self.init_ema()
+
+    def to(self,device):
+        self.device = device 
+        return super().to(device)
 
     def define_deep_models(self,config,device):
         self.mixed_network = load_mixed_network(config,device=device)
@@ -81,16 +87,10 @@ class EquivariantDiffussionNoising(EMA,nn.Module):
     #====================================================================
     # LOSS
     #====================================================================
-    def loss(self,databatch:QM9PointDataNameTuple,discrete_sample,continuous_sample):
+    def loss(self,x, h, node_mask, edge_mask, context):
         """
         """
-        x = databatch.target_continuous
-        h = databatch.target_discrete
-        node_mask = databatch.node_mask
-        edge_mask = databatch.edge_mask
-        context = databatch.context_discrete
         bs, n_nodes, n_dims = x.size()
-
 
         edge_mask = edge_mask.view(bs, n_nodes * n_nodes)
 

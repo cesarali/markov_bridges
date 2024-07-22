@@ -95,7 +95,7 @@ class StatesDataloader:
     """
 
     """
-    def __init__(self, config:StatesDataloaderConfig):
+    def __init__(self, config):
         """
         Initializes the StatesDataloaders2 object with configuration settings.
         

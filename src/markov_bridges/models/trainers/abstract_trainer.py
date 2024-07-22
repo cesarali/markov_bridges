@@ -173,12 +173,18 @@ class Trainer(ABC):
                 self.tqdm_object.refresh()  # to show immediately the update
                 if self.config.trainer.debug:
                     break
+                
             training_state.set_average_train_loss()
             results_,all_metrics = self.global_training(training_state,all_metrics,epoch)
 
             #EVALUATES VALIDATION LOSS
             if not self.config.trainer.save_model_metrics_stopping:
-                for step, databatch in enumerate(self.dataloader.test()):
+                if hasattr(self.dataloader,"validation"):
+                    validation_dataloader = self.dataloader.validation()
+                else:
+                    validation_dataloader = self.dataloader.test()
+
+                for step, databatch in enumerate(validation_dataloader):
                     databatch = self.preprocess_data(databatch)
                     # DATA
                     loss = self.test_step(databatch,training_state.number_of_test_step,epoch)

@@ -11,7 +11,10 @@ from markov_bridges.data.qm9.data.prepare import prepare_dataset
 
 def initialize_datasets(datadir, dataset, subset=None, splits=None,
                         force_download=False, subtract_thermo=False,
-                        remove_h=False):
+                        remove_h=False,    
+                        num_pts_train=-1,
+                        num_pts_test=-1,
+                        num_pts_valid=-1):
     """
     Initialize datasets.
 
@@ -52,9 +55,9 @@ def initialize_datasets(datadir, dataset, subset=None, splits=None,
     TODO: Delete the splits argument.
     """
     # Set the number of points based upon the arguments
-    num_pts = {'train': -1,
-               'test': -1, 
-               'valid': -1}
+    num_pts = {'train': num_pts_train,
+               'test': num_pts_test, 
+               'valid': num_pts_valid}
 
     # Download and process dataset. Returns datafiles.
     datafiles = prepare_dataset(

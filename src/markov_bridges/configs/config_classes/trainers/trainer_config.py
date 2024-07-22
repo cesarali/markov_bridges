@@ -4,14 +4,8 @@ from dataclasses import dataclass,field
 from markov_bridges import project_path
 from markov_bridges.configs.config_classes.metrics.metrics_configs import metrics_config
 
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.optim.lr_scheduler import ExponentialLR
-from torch.optim.lr_scheduler import MultiStepLR
-from torch.optim.lr_scheduler import StepLR
-
 @dataclass
 class BasicTrainerConfig:
-
     epoch:int = 0
     number_of_training_steps:int = 0
     number_of_test_step:int = 0
@@ -90,6 +84,26 @@ class CMBTrainerConfig(BasicTrainerConfig):
     loss_regularize:bool = False
     loss_regularize_square:bool = False
     max_iterations:int = 1000000
+    warm_up:int=0
+
+    def __post_init__(self):
+        new_metrics = []
+        for metric in self.metrics:
+            if isinstance(metric,dict):
+                metric = metrics_config[metric["name"]](**metric)
+                new_metrics.append(metric)
+            elif isinstance(metric,str):
+                new_metrics.append(metric)
+            else:
+                pass
+        self.metrics = new_metrics
+
+
+@dataclass
+class EDMGTrainerConfig(BasicTrainerConfig):
+    name:str = "EDMGTrainer"
+    weight_decay:float = 1e-12
+    amsgrad:bool = True
     warm_up:int=0
 
     def __post_init__(self):

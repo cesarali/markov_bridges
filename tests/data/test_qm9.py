@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-from markov_bridges.data.qm9_dataloader import QM9DataModule
-from markov_bridges.data.qm9_dataloader import QM9Dataset,RemoveYTransform
+from markov_bridges.data.qm9_graph_dataloader import QM9Dataset,RemoveYTransform
 from markov_bridges.data.qm9.dataset import retrieve_dataloaders
 
 """
@@ -16,7 +15,6 @@ wandb: False             # Use wandb?
 online: True             # True: online / False: offline
 data_dir: 'data'
 """
-
 
 @dataclass
 class QM9Config:
