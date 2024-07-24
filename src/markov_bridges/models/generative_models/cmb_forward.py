@@ -175,7 +175,7 @@ class MixedForwardMap(EMA,nn.Module):
         discrete_head,continuous_head = self.mixed_network(discrete_sample,continuous_sample,databatch.time)
         
         # Train What is Needed
-        full_loss = torch.Tensor([0.])
+        full_loss = torch.Tensor([0.]).to(discrete_sample.device if discrete_sample is not None else continuous_sample.device)
         
         if self.has_target_discrete:
             full_loss += self.discrete_loss(databatch,discrete_head).mean()
