@@ -38,7 +38,7 @@ def sample_moons(n,noise=0.2):
     return x0,labels
 
 def sample_8gaussians(n):
-    XY, labels = eight_normal_sample(n, 2, scale=5, var=0.1)
+    XY, labels = eight_normal_sample(n, 2, scale=1, var=0.1)
     return XY.float(),labels
 
 def sample_from_dataloader_iterator(dataloder_iterator,sample_size,flatten=True):
