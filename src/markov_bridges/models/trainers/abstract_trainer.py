@@ -7,20 +7,22 @@ from abc import ABC, abstractmethod
 from tqdm import tqdm
 
 from torch.utils.tensorboard import SummaryWriter
+
 from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.models.generative_models.cmb import CMB
 from markov_bridges.models.generative_models.edmg import EDMG
-
+from markov_bridges.models.generative_models.cfm import CFM
 
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 from markov_bridges.configs.config_classes.generative_models.edmg_config import EDMGConfig
+from markov_bridges.configs.config_classes.generative_models.cfm_config import CFMConfig
 
 from markov_bridges.models.metrics.metrics_utils import LogMetrics
 
 @dataclass
 class TrainerState:
-    model: Union[CJB|CMB|EDMG]
+    model: Union[CJB|CMB|CFM|EDMG]
     best_loss : float = np.inf
 
     average_train_loss : float = 0.
@@ -63,8 +65,8 @@ class Trainer(ABC):
     """
 
     dataloader = None
-    generative_model:CJB|CMB|EDMG = None
-    config:CJBConfig|CMBConfig|EDMGConfig = None
+    generative_model:CJB|CMB|CFM|EDMG = None
+    config:CJBConfig|CMBConfig|CFMConfig|EDMGConfig = None
     do_ema:bool = False
 
     def parameters_info(self):

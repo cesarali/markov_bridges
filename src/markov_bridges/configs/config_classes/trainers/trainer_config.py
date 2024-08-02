@@ -117,3 +117,27 @@ class EDMGTrainerConfig(BasicTrainerConfig):
             else:
                 pass
         self.metrics = new_metrics
+
+
+
+@dataclass
+class CFMTrainerConfig(BasicTrainerConfig):
+    name: str = "CFMTrainer"
+    loss_regularize_variance: bool = False
+    loss_regularize: bool = False
+    loss_regularize_square: bool = False
+    max_iterations: int = 1000000
+    warm_up: int = 0
+    paralellize_gpu: bool=False
+
+    def __post_init__(self):
+        new_metrics = []
+        for metric in self.metrics:
+            if isinstance(metric,dict):
+                metric = metrics_config[metric["name"]](**metric)
+                new_metrics.append(metric)
+            elif isinstance(metric,str):
+                new_metrics.append(metric)
+            else:
+                pass
+        self.metrics = new_metrics
