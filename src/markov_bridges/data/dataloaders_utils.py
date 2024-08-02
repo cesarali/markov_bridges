@@ -2,10 +2,12 @@ from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
 from markov_bridges.data.graphs_dataloader import GraphDataloader
 from markov_bridges.data.categorical_samples import IndependentMixDataloader
 from markov_bridges.data.qm9_points_dataloader import QM9PointDataloader
+from markov_bridges.data.gaussians2D_dataloaders import GaussiansDataloader
 
 from markov_bridges.configs.config_classes.data.graphs_configs import GraphDataloaderGeometricConfig
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
-from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
+from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig, GaussiansConfig
+
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.configs.config_classes.data.molecules_configs import QM9Config
 
@@ -18,6 +20,8 @@ def get_dataloaders(config:CJBConfig):
         dataloader = IndependentMixDataloader(config.data)
     elif isinstance(config.data,QM9Config):
         dataloader = QM9PointDataloader(config)
+    elif isinstance(config.data,GaussiansConfig):
+        dataloader = GaussiansDataloader(config.data)
     else:
         raise Exception("Dataloader not Found!")
     return dataloader

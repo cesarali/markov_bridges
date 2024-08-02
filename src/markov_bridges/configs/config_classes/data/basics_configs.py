@@ -115,3 +115,33 @@ class CategoricalDataloaderConfig(MarkovBridgeDataConfig):
     def __post_init__(self):
         self.temporal_net_expected_shape =  [self.dimensions]
 
+@dataclass
+class GaussiansConfig(MarkovBridgeDataConfig):
+    name:str = "Gaussians"
+    dataset_name:str = "Ngaussians" 
+    vocab_size: int = 0
+
+    # variables model
+    has_context_discrete: bool = False    
+    has_context_continuous: bool = False
+    has_target_continuous:bool = True
+    has_target_discrete: bool = False
+    discrete_dimensions: int = 0
+    continuos_dimensions: int = 2
+    context_discrete_dimension: int = 0
+
+    source_continuous_type: str = "gaussian"
+    target_continuous_type: str = "Ngaussians"
+    number_of_gaussians: int = 8
+    gauss_std: float = 0.1
+
+    total_data_size: int = 22400
+    train_data_size: int = 20000
+    test_data_size: int = 2400
+
+    batch_size: int = 256
+
+    def __post_init__(self):
+        self.vocab_size = self.number_of_gaussians
+        if self.has_target_discrete: self.discrete_dimensions = 1
+        if self.has_context_discrete: self.context_discrete_dimension = 1

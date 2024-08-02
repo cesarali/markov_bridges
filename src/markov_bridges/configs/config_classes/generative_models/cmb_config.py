@@ -20,7 +20,7 @@ from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs impo
 
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
 from markov_bridges.configs.config_classes.data.graphs_configs import GraphDataloaderGeometricConfig
-from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
+from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig, GaussiansConfig
 from markov_bridges.configs.config_classes.pipelines.pipeline_configs import BasicPipelineConfig
 from markov_bridges.configs.config_classes.trainers.trainer_config import CMBTrainerConfig
 
@@ -28,7 +28,8 @@ image_data_path = os.path.join(data_path,"raw")
 
 data_configs = {"LakhPianoRoll":LakhPianoRollConfig,
                 "GraphDataloaderGeometric":GraphDataloaderGeometricConfig,
-                "IndependentMix":IndependentMixConfig}
+                "IndependentMix":IndependentMixConfig,
+                "Gaussians":GaussiansConfig}
 
 mixed_network_configs = {
     "MixedDeepMLP":MixedDeepMLPConfig,
