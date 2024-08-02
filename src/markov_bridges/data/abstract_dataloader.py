@@ -138,6 +138,7 @@ class MarkovBridgeDataloader:
 
             self.discrete_dimensions = config.discrete_dimensions
             self.continuos_dimensions = config.continuos_dimensions
+            self.batch_size = config.batch_size
     
     def get_source_data(self):
         return None
@@ -145,7 +146,7 @@ class MarkovBridgeDataloader:
     def get_target_data(self):
         return None
     
-    def join_context(databatch:MarkovBridgeDataNameTuple,discrete_data=None,continuous_data=None):
+    def join_context(databatch:MarkovBridgeDataNameTuple, discrete_data=None, continuous_data=None):
         return None
     
     def get_data_divisions(self)->MarkovBridgeDataClass:
@@ -215,7 +216,7 @@ class MarkovBridgeDataloader:
 
         for databatch in dataloader_iterator:
             databatch:MarkovBridgeDataNameTuple
-            batch_size = databatch.source_discrete.size(0)
+            batch_size = self.batch_size # databatch.source_discrete.size(0)
             take_size = min(size_left, batch_size)
             
             safe_append(context_discrete, databatch.context_discrete[:take_size] if hasattr(databatch, 'context_discrete') else None)

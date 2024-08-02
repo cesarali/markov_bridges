@@ -29,6 +29,7 @@ class CMBPipeline:
 
         return_origin: deprecated
         """
+        databatch = nametuple_to_device(databatch,self.device)
         state = self.tau_diffusion_sampler.sample(self.rate_model,databatch,return_path=return_path)
         return state
             
