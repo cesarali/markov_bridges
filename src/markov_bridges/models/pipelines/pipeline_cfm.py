@@ -26,13 +26,13 @@ class CFMPipeline:
         self.device = check_model_devices(self.drift_model)
 
     def generate_sample(self,
-                        x_0: MarkovBridgeDataNameTuple=None,
-                        return_path: bool=False) -> CFMPipelineOutput:
+                        x_0: MarkovBridgeDataNameTuple=None
+                        ) -> CFMPipelineOutput:
         """
         From an initial sample of x_0 samples the data
         """
         x_0 = nametuple_to_device(x_0, self.device)
-        trajectories = ODESamplerCFM(self.config, self.drift_model, x_0, return_path=return_path)
+        trajectories = ODESamplerCFM(self.config, self.drift_model, x_0)
         trajectories = trajectories.permute(1,0,2)
         context_discrete = x_0.context_discrete if self.config.data.has_context_discrete else None
         context_continuous = x_0.context_continuous if self.config.data.has_context_continuous else None
@@ -57,6 +57,6 @@ class CFMPipeline:
         """
         x_0 = self.dataloder.get_data_sample(sample_size, train=False)
         x_0 = nametuple_to_device(x_0, self.device)
-        return self.generate_sample(x_0, return_path=return_path)
+        return self.generate_sample(x_0)
 
     
