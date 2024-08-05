@@ -16,3 +16,10 @@ class CFMPipelineConfig(BasicPipelineConfig):
     sensitivity: bool = 'autograd'
     atol: float = 1e-4
     rtol: float = 1e-4
+
+@dataclass
+class CMBPipelineConfig(BasicPipelineConfig):
+    solver: str = 'ode_tau' #sde_tau
+    sensitivity: bool = 'autograd'
+    atol: float = 1e-4
+    rtol: float = 1e-4

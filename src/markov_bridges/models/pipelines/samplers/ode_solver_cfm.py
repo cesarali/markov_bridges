@@ -15,7 +15,6 @@ def ODESamplerCFM(config: CFMConfig,
     :param N:
     :return:
     """
-
     num_steps = config.pipeline.number_of_steps
     ode_solver = config.pipeline.ode_solver
     atol = config.pipeline.atol

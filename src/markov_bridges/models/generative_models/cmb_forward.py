@@ -44,6 +44,7 @@ class MixedForwardMap(EMA,nn.Module):
     
         self.context_discrete_dimension = config_data.context_discrete_dimension
         self.context_continuous_dimension = config_data.context_continuous_dimension
+        self.continuous_loss_type = config.continuous_loss_type
 
         self.join_context = join_context
 
@@ -142,21 +143,38 @@ class MixedForwardMap(EMA,nn.Module):
         rates = A + B[:,None,None]*change_classifier + C[:,None,None]*where_iam_classifier
         return rates
     
-    def continuous_drift(self,continuous_head,x,time):
-        drift = (continuous_head - x)/(1.-time[:,None])
+    def continuous_drift(self,x1,x,time):
+        if len(time.shape) == 1:
+            time = time[:,None]
+        drift = (x1 - x)/(1.-time)
         return drift
+    
+    def continuous_flow(self,x,x1,x0,time):
+        if len(time.shape) == 1:
+            time = time[:,None]
+        A = (1.-2*time)/(time*(1.-time))
+        x_m = x0*(1.-time) + x1*time
+        flow = A*(x - x_m) + (x1- x0)
+        return flow
     
     def forward_map(self,discrete_sample,continuous_sample,time):
         if len(time.shape) > 1:
             time = time.flatten()
 
         discrete_head,continuous_head = self.mixed_network(discrete_sample,continuous_sample,time)
+
         if self.has_target_discrete:
             rate = self.discrete_rate(discrete_head,discrete_sample,time)
         else:
             rate = None
+            
         if self.has_target_continuous:
-            drift = self.continuous_drift(continuous_head,continuous_sample,time)
+            if self.continuous_loss_type == "regression":
+                drift = self.continuous_drift(continuous_head,continuous_sample,time)
+            elif self.continuous_loss_type == "flow":
+                drift = continuous_head
+            elif self.continuous_loss_type == "drift":
+                drift = continuous_head
         else:
             drift = None
         return rate,drift
@@ -178,14 +196,14 @@ class MixedForwardMap(EMA,nn.Module):
         full_loss = torch.Tensor([0.]).to(discrete_sample.device if discrete_sample is not None else continuous_sample.device)
         
         if self.has_target_discrete:
-            full_loss += self.discrete_loss(databatch,discrete_head).mean()
+            full_loss += self.discrete_loss(databatch,discrete_head,discrete_sample).mean()
 
         if self.has_target_continuous:
-            full_loss += self.continuous_loss(databatch,continuous_head).mean()
+            full_loss += self.continuous_loss(databatch,continuous_head,continuous_sample).mean()
 
         return full_loss
     
-    def discrete_loss(self,databatch:MarkovBridgeDataNameTuple,discrete_head):
+    def discrete_loss(self,databatch:MarkovBridgeDataNameTuple,discrete_head,discrete_sample=None):
         # If has context remove the part predicting context
         if self.has_context_discrete:
             discrete_head = discrete_head[:, self.context_discrete_dimension:,:]
@@ -196,11 +214,19 @@ class MixedForwardMap(EMA,nn.Module):
         discrete_loss = self.discrete_loss_nn(discrete_head,target_discrete.long())
         return discrete_loss
     
-    def continuous_loss(self,databatch:MarkovBridgeDataNameTuple,continuous_head):
+    def continuous_loss(self,databatch:MarkovBridgeDataNameTuple,continuous_head,continuous_sample=None):
         # If has context continuous
         if self.has_context_continuous:
             continuous_head = continuous_head[:, self.context_continuous_dimension:,:]
-        mse = self.continuous_loss_nn(continuous_head,databatch.target_continuous)
+        # pick loss
+        if self.continuous_loss_type == "flow":
+            conditional_flow = self.continuous_flow(continuous_sample,databatch.target_continuous,databatch.source_continuous,databatch.time)
+            mse = self.continuous_loss_nn(conditional_flow,databatch.target_continuous)
+        elif self.continuous_loss_type == "drift":
+            conditional_drift = self.continuous_drift(databatch.target_continuous,continuous_sample,databatch.time)
+            mse = self.continuous_loss_nn(continuous_head,conditional_drift)
+        elif self.continuous_loss_type == "regression":
+            mse = self.continuous_loss_nn(continuous_head,databatch.target_continuous)
         return mse
     
     #====================================================================

@@ -75,6 +75,7 @@ class TauDiffusion:
         self.num_intermediates = config.pipeline.num_intermediates
         self.max_rate_at_end = config.pipeline.max_rate_at_end
 
+        self.solver_type = config.pipeline.solver
         self.time_epsilon = config.pipeline.time_epsilon
         self.min_t = 1./self.num_steps
 
@@ -118,7 +119,12 @@ class TauDiffusion:
         if end:
             x_new = torch.max(rates, dim=2)[1]
         return x_new
-
+    
+    def EulerStep(self,vector_field,dt,state: MixedTauState,end:bool=False):
+        x = state.continuous
+        x = x + dt * vector_field.to(x.device)
+        return x
+    
     def DiffusionStep(self, drift, dt, state: MixedTauState):
         #x_mean = x + drift * dt
         #x = x_mean + diffusion[:, None, None, None] * np.sqrt(-dt) * z
@@ -149,6 +155,7 @@ class TauDiffusion:
                 # handles current time
                 h = ts[idx+1] - ts[idx]
                 times = self.get_time_vector(t, state.number_of_paths, state.device)
+
                 rates, drift = forward_model.forward_map(state.discrete,
                                                          state.continuous,
                                                          times)
@@ -156,7 +163,10 @@ class TauDiffusion:
                 if self.has_target_discrete:
                     new_discrete = self.TauStep(rates, h, state)
                 if self.has_target_continuous:
-                    new_continuous = self.DiffusionStep(drift, h, state)
+                    if self.solver_type == 'ode_tau':
+                        new_continuous = self.EulerStep(drift,h,state)
+                    if self.solver_type == 'sde_tau':
+                        new_continuous = self.DiffusionStep(drift, h, state)
 
                 # store the paths if requiered
                 if save_ts is not None:

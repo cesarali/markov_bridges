@@ -6,6 +6,7 @@ from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.models.generative_models.cmb_forward import MixedForwardMap
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 from markov_bridges.models.pipelines.samplers.mixed_tau_diffusion import TauDiffusion, MixedTauState
+from markov_bridges.models.pipelines.samplers.ode_solver_cfm import ODESamplerCFM
      
 class CMBPipeline:
     """
@@ -17,8 +18,7 @@ class CMBPipeline:
         self.rate_model:MixedForwardMap = rate_model
         self.dataloder:MarkovBridgeDataloader = dataloader
         self.device = check_model_devices(self.rate_model)
-
-        self.tau_diffusion_sampler = TauDiffusion(config,dataloader.join_context)
+        self.sampler = TauDiffusion(config,dataloader.join_context)
         
     def generate_sample(self,
                         databatch:MarkovBridgeDataNameTuple=None,
@@ -30,7 +30,7 @@ class CMBPipeline:
         return_origin: deprecated
         """
         databatch = nametuple_to_device(databatch,self.device)
-        state = self.tau_diffusion_sampler.sample(self.rate_model,databatch,return_path=return_path)
+        state = self.sampler.sample(self.rate_model,databatch,return_path=return_path)
         return state
             
     def __call__(self,

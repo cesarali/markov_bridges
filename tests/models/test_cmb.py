@@ -5,12 +5,18 @@ from markov_bridges.configs.config_classes.data.basics_configs import Independen
 from markov_bridges.models.generative_models.cmb import CMB
 import torch
 
-if __name__=="__main__":
-    model_config = CMBConfig()
+def test_cmb_loss():
+    model_config = CMBConfig(continuous_loss_type="drift")
     model_config.data = IndependentMixConfig(has_context_discrete=True)
 
     cmb = CMB(model_config,device=torch.device("cpu"))
     databatch = cmb.dataloader.get_databatch()
+
+    print(databatch.time.shape)
     discrete_sample,continuous_sample = cmb.forward_map.sample_bridge(databatch)
     loss = cmb.forward_map.loss(databatch,discrete_sample,continuous_sample)
     print(loss)
+
+if __name__=="__main__":
+    test_cmb_loss()
+

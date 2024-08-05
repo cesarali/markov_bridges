@@ -21,7 +21,7 @@ from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs impo
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
 from markov_bridges.configs.config_classes.data.graphs_configs import GraphDataloaderGeometricConfig
 from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig, GaussiansConfig
-from markov_bridges.configs.config_classes.pipelines.pipeline_configs import BasicPipelineConfig
+from markov_bridges.configs.config_classes.pipelines.pipeline_configs import CMBPipelineConfig
 from markov_bridges.configs.config_classes.trainers.trainer_config import CMBTrainerConfig
 
 image_data_path = os.path.join(data_path,"raw")
@@ -65,6 +65,9 @@ class CMBConfig:
     """
     Data class to store all configuration files from CMB model
     """
+    # process config
+    continuous_loss_type:str = "flow" # flow, regression, drift
+
     # data
     data: LakhPianoRollConfig|IndependentMixConfig = IndependentMixConfig()
     # process 
@@ -76,7 +79,7 @@ class CMBConfig:
     # training
     trainer: CMBTrainerConfig = CMBTrainerConfig()
     #pipeline
-    pipeline : BasicPipelineConfig = BasicPipelineConfig(num_intermediates=None)
+    pipeline : CMBPipelineConfig = CMBPipelineConfig(num_intermediates=None)
 
     def __post_init__(self):
         if isinstance(self.data,dict):
@@ -95,5 +98,5 @@ class CMBConfig:
             self.trainer = CMBTrainerConfig(**self.trainer)
 
         if isinstance(self.pipeline,dict):
-            self.pipeline = BasicPipelineConfig(**self.pipeline)
+            self.pipeline = CMBPipelineConfig(**self.pipeline)
 

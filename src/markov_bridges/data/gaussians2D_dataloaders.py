@@ -5,7 +5,7 @@ import numpy as np
 from torch.distributions import Normal
 from torch.utils.data import DataLoader
 
-from markov_bridges.configs.config_classes.data.gaussian2D_configs import GaussiansConfig
+from markov_bridges.configs.config_classes.data.basics_configs import GaussiansConfig
 from torch.utils.data import DataLoader
 
 from markov_bridges.data.abstract_dataloader import (
