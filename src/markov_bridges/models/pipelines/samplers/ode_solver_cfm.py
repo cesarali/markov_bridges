@@ -24,8 +24,8 @@ def ODESamplerCFM(config: CFMConfig,
     time_steps = torch.linspace(0, 1, num_steps, device=device)
 
     drift = ContextWrapper(drift_model.continuous_network, 
-                           context_discrete=x_0.context_discrete if config.data.has_context_discrete else None, 
-                           context_continuous=x_0.context_continuous if config.data.has_context_continuous else None)
+                           context_discrete=None if not config.data.has_context_discrete else x_0.context_discrete, 
+                           context_continuous=None if not config.data.has_context_continuous else x_0.context_continuous)
 
     if ode_solver == 'euler':
         node = EulerODESolver(vector_field=drift)

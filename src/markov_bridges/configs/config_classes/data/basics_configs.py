@@ -135,9 +135,9 @@ class GaussiansConfig(MarkovBridgeDataConfig):
     number_of_gaussians: int = 8
     gauss_std: float = 0.1
 
-    total_data_size: int = 22400
+    total_data_size: int = 22000
     train_data_size: int = 20000
-    test_data_size: int = 2400
+    test_data_size: int = 2000
 
     batch_size: int = 256
 
