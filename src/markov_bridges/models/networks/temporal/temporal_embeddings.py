@@ -17,7 +17,7 @@ def transformer_timestep_embedding(timesteps, embedding_dim, max_positions=10000
     return emb
 
 
-def timestep_sinusoidal_embedding(timesteps, dim, max_period=10000):
+def sinusoidal_timestep_embedding(timesteps, dim, max_period=10000):
     """Create sinusoidal timestep embeddings.
 
     :param timesteps: a 1-D Tensor of N indices, one per batch element. These may be fractional.

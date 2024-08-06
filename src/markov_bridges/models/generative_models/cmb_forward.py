@@ -115,7 +115,7 @@ class MixedForwardMap(EMA,nn.Module):
     #====================================================================
     # RATES AND DRIFT for GENERATION
     #====================================================================
-    def discrete_rate(self,change_logits,x,time):
+    def discrete_rate(self,change_logits, x, time):
         """
         RATE
 
@@ -143,46 +143,48 @@ class MixedForwardMap(EMA,nn.Module):
         rates = A + B[:,None,None]*change_classifier + C[:,None,None]*where_iam_classifier
         return rates
     
-    def continuous_drift(self,x1,x,time):
-        if len(time.shape) == 1:
-            time = time[:,None]
-        drift = (x1 - x)/(1.-time)
+    def continuous_drift(self, x, x1, t):
+        if len(t.shape) == 1:
+            t = t[:,None]
+        drift = (x1 - x)/(1.-t)
         return drift
     
-    def continuous_flow(self,x,x1,x0,time):
-        if len(time.shape) == 1:
-            time = time[:,None]
-        A = (1.-2*time)/(time*(1.-time))
-        x_m = x0*(1.-time) + x1*time
-        flow = A*(x - x_m) + (x1- x0)
-        return flow
+    def continuous_flow(self, x, x1, x0, t):
+        A = (1 - 2 * t) / (t * (1 - t))
+        B = t**2 / (t * (1 - t))
+        C = -1 * (1 - t)**2 / (t * (1 - t))
+        return A * x + B * x1 + C * x0 
+
     
     def forward_map(self,discrete_sample,continuous_sample,time):
         if len(time.shape) > 1:
             time = time.flatten()
 
-        discrete_head,continuous_head = self.mixed_network(discrete_sample,continuous_sample,time)
+        discrete_head,continuous_head = self.mixed_network(discrete_sample, continuous_sample, time)
 
         if self.has_target_discrete:
-            rate = self.discrete_rate(discrete_head,discrete_sample,time)
+            rate = self.discrete_rate(discrete_head, discrete_sample, time)
         else:
             rate = None
             
         if self.has_target_continuous:
             if self.continuous_loss_type == "regression":
-                drift = self.continuous_drift(continuous_head,continuous_sample,time)
+                vector_field = self.continuous_drift(continuous_head, continuous_sample, time)
+
             elif self.continuous_loss_type == "flow":
-                drift = continuous_head
+                vector_field = continuous_head
+
             elif self.continuous_loss_type == "drift":
-                drift = continuous_head
+                vector_field = continuous_head
         else:
-            drift = None
-        return rate,drift
+            vector_field = None
+        return rate, vector_field
     
     #====================================================================
     # LOSS
     #====================================================================
     def loss(self,databatch:MarkovBridgeDataNameTuple,discrete_sample,continuous_sample):
+        
         # IF WE HAVE CONTEXT JOIN FOR FULL DATA
         if self.has_context_continuous or self.has_context_discrete:
             discrete_sample,continuous_sample = self.join_context(databatch,
@@ -203,7 +205,7 @@ class MixedForwardMap(EMA,nn.Module):
 
         return full_loss
     
-    def discrete_loss(self,databatch:MarkovBridgeDataNameTuple,discrete_head,discrete_sample=None):
+    def discrete_loss(self, databatch:MarkovBridgeDataNameTuple, discrete_head, discrete_sample=None):
         # If has context remove the part predicting context
         if self.has_context_discrete:
             discrete_head = discrete_head[:, self.context_discrete_dimension:,:]
@@ -214,19 +216,24 @@ class MixedForwardMap(EMA,nn.Module):
         discrete_loss = self.discrete_loss_nn(discrete_head,target_discrete.long())
         return discrete_loss
     
-    def continuous_loss(self,databatch:MarkovBridgeDataNameTuple,continuous_head,continuous_sample=None):
+    def continuous_loss(self, databatch:MarkovBridgeDataNameTuple, continuous_head, continuous_sample=None):
+        
         # If has context continuous
         if self.has_context_continuous:
             continuous_head = continuous_head[:, self.context_continuous_dimension:,:]
+
         # pick loss
         if self.continuous_loss_type == "flow":
-            conditional_flow = self.continuous_flow(continuous_sample,databatch.target_continuous,databatch.source_continuous,databatch.time)
-            mse = self.continuous_loss_nn(conditional_flow,databatch.target_continuous)
+            conditional_flow = self.continuous_flow(continuous_sample, databatch.target_continuous, databatch.source_continuous, databatch.time)
+            mse = self.continuous_loss_nn(continuous_head, conditional_flow)
+
         elif self.continuous_loss_type == "drift":
-            conditional_drift = self.continuous_drift(databatch.target_continuous,continuous_sample,databatch.time)
-            mse = self.continuous_loss_nn(continuous_head,conditional_drift)
+            conditional_drift = self.continuous_drift(continuous_head, databatch.target_continuous, databatch.time)
+            mse = self.continuous_loss_nn(continuous_head, conditional_drift)
+
         elif self.continuous_loss_type == "regression":
-            mse = self.continuous_loss_nn(continuous_head,databatch.target_continuous)
+            mse = self.continuous_loss_nn(continuous_head, databatch.target_continuous)
+
         return mse
     
     #====================================================================

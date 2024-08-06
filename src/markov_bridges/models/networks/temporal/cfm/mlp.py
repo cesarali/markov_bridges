@@ -2,7 +2,7 @@ import torch
 from torch import nn as nn
 from markov_bridges.configs.config_classes.generative_models.cfm_config import CFMConfig
 from markov_bridges.utils.activations import get_activation_function
-from markov_bridges.models.networks.temporal.temporal_embeddings import transformer_timestep_embedding
+from markov_bridges.models.networks.temporal.temporal_embeddings import transformer_timestep_embedding, sinusoidal_timestep_embedding
 
 
 class DeepMLP(nn.Module):
@@ -19,7 +19,7 @@ class DeepMLP(nn.Module):
 
     def define_deep_models(self, config:CFMConfig):
         self.time_embed_dim = config.continuous_network.time_embed_dim
-        self.discrete_embed_dim = config.continuous_network.discrete_embed_dim
+        self.discrete_embed_dim = config.continuous_network.discrete_embed_dim if self.config.data.has_context_discrete else 0
 
         self.hidden_layer = config.continuous_network.hidden_dim
         self.num_layers = config.continuous_network.num_layers
@@ -54,8 +54,10 @@ class DeepMLP(nn.Module):
         if context_discrete is not None:
             context_discrete = self.discrete_embedding(context_discrete.long())
 
-        t = transformer_timestep_embedding(times, embedding_dim=self.time_embed_dim)
-        x = torch.cat([x_continuous, t], dim=1) if context_discrete is None else torch.cat([x_continuous, t, context_discrete.squeeze()], dim=1)
+        # t = transformer_timestep_embedding(times, embedding_dim=self.time_embed_dim)
+        t = sinusoidal_timestep_embedding(times, self.time_embed_dim, max_period=10000)
+
+        x = torch.cat([x_continuous, t], dim=1) if context_discrete is None else torch.cat([x_continuous, context_discrete.squeeze(), t], dim=1)
         x = self.encoding_model(x)
 
         return self.continuous_head(x)
