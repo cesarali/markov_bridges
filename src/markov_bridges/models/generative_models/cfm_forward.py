@@ -58,21 +58,26 @@ class ContinuousForwardMap(EMA, nn.Module):
     #====================================================================
 
 
-    def sample_continuous_bridge(self, x_1, x_0, time):
+    def sample_continuous_bridge(self, x1, x0, time):
         """
         simple bridge. Equivalent to a linear interpolant x_t 
         """
-        device = x_1.device
-        original_shape = x_0.shape
-        continuous_dimensions = x_1.size(1)
+        device = x1.device
+        original_shape = x0.shape
+        continuous_dimensions = x1.size(1)
         time_ = time[:,None].repeat((1,continuous_dimensions))
 
         t = time_.flatten()
-        x_1 = x_1.flatten()
-        x_0 = x_0.flatten()
+        x1 = x1.flatten()
+        x0 = x0.flatten()
 
-        mean = x_0 * (1.-t) + x_1 * t
-        std = self.config.thermostat.gamma
+        mean = x0 * (1.-t) + x1 * t
+
+        if self.config.trainer.conditional_bridge_type == 'linear':
+            std = self.config.thermostat.gamma
+
+        elif self.config.trainer.conditional_bridge_type == 'schrodinger':
+            std = self.config.thermostat.gamma * torch.sqrt(t * (1.-t))
 
         x = mean + std * torch.randn_like(mean)
         x = x.to(device)
@@ -90,10 +95,21 @@ class ContinuousForwardMap(EMA, nn.Module):
     # LOSS
     #====================================================================
     
-    def conditional_drift(self, x_1, x_0):
+    def conditional_drift(self, x, x1, x0, t):
         """ conditional vector field (drift) u_t(x|x_0,x_1)
         """
-        return x_1 - x_0 
+
+        if self.config.trainer.conditional_bridge_type == 'linear':
+            A = 0.
+            B = 1.
+            C = -1.
+
+        elif self.config.trainer.conditional_bridge_type == 'schrodinger':
+            A = (1. - 2. * t) / (t * (1. - t))
+            B = t**2 / (t * (1. - t))
+            C = -1. * (1. - t)**2 / (t * (1. - t))
+
+        return A * x + B * x1 + C * x0 
     
     def loss(self, databatch: MarkovBridgeDataNameTuple, continuous_sample):
         continuous_head = self.continuous_network(x_continuous=continuous_sample,  
@@ -101,8 +117,10 @@ class ContinuousForwardMap(EMA, nn.Module):
                                                   context_continuous=databatch.context_continuous if self.has_context_continuous else None,
                                                   times=databatch.time)
         
-        ut = self.conditional_drift(x_1=databatch.target_continuous, 
-                                    x_0=databatch.source_continuous) 
+        ut = self.conditional_drift(x=continuous_sample,
+                                    x1=databatch.target_continuous, 
+                                    x0=databatch.source_continuous,
+                                    t=databatch.time) 
         
         full_loss = torch.Tensor([0.]).to(continuous_sample.device)
         full_loss += self.continuous_loss_nn(continuous_head, ut).mean() 

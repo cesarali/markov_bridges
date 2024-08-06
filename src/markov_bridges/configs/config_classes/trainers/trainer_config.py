@@ -123,6 +123,7 @@ class EDMGTrainerConfig(BasicTrainerConfig):
 @dataclass
 class CFMTrainerConfig(BasicTrainerConfig):
     name: str = "CFMTrainer"
+    conditional_bridge_type: str = "linear" # "schrodinger"
     loss_regularize_variance: bool = False
     loss_regularize: bool = False
     loss_regularize_square: bool = False
