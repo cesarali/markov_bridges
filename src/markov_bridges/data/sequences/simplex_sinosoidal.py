@@ -38,14 +38,16 @@ def create_dataset(sample_size, time_steps, K, seed=42):
     
     return data
 
-def sample_categorical(data):
+def sample_categorical(data,seed=72):
+    generator = torch.Generator().manual_seed(seed)
+
     # Sample from the categorical distribution at each time step for each sample
     sample_size, time_steps, num_states = data.shape
     # Flatten the data to shape (sample_size * time_steps, num_states) for batch sampling
     flat_data = data.view(-1, num_states)
     
     # Perform the sampling in batch
-    categorical_samples_flat = torch.multinomial(flat_data, 1).squeeze(1)
+    categorical_samples_flat = torch.multinomial(flat_data, 1,generator=generator).squeeze(1)
     
     # Reshape back to (sample_size, time_steps)
     categorical_samples = categorical_samples_flat.view(sample_size, time_steps)
@@ -163,11 +165,10 @@ class SinusoidalDataloader(MarkovBridgeDataloader):
         self.remove_context = lambda full_data_discrete : full_data_discrete[:,context_dimension:]
     
 if __name__=="__main__":        
-    
     # Parameters
     sample_size = 100  # Number of samples
     time_steps = 50    # Number of time steps
-    num_states = 2    # Number of states (K)
+    num_states = 4    # Number of states (K)
 
     # Create the dataset with a fixed seed
     dataset = create_dataset(sample_size, time_steps, num_states, seed=42)
@@ -185,3 +186,4 @@ if __name__=="__main__":
     dataloader = SinusoidalDataloader(data_config)
     databatch = dataloader.get_databatch()
     print(databatch)
+    """
