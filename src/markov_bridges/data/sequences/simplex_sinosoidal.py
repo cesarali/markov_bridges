@@ -52,7 +52,7 @@ def sample_categorical(data):
     
     return categorical_samples
 
-def plot_dataset(data, sample_index=0):
+def plot_dataset(data, sample_index=0, save_to=None):
     time_steps = data.shape[1]
     num_states = data.shape[2]
     
@@ -64,14 +64,16 @@ def plot_dataset(data, sample_index=0):
     plt.ylabel('Softmax Value')
     plt.title('Evolution of each k state over time')
     plt.legend()
+    plt.savefig(save_to)
     plt.show()
 
-def plot_categorical_samples(categorical_samples, sample_index=0):
+def plot_categorical_samples(categorical_samples, sample_index=0, save_to=None):
     plt.figure(figsize=(14, 3))
     plt.plot(range(categorical_samples.shape[1]), categorical_samples[sample_index].numpy(), marker='o', linestyle='-')
     plt.xlabel('Time Steps')
     plt.ylabel('Sampled State')
     plt.title('Categorical Samples over Time')
+    plt.savefig(save_to)
     plt.show()
 
 class SinusoidalDataloader(MarkovBridgeDataloader):
@@ -161,11 +163,11 @@ class SinusoidalDataloader(MarkovBridgeDataloader):
         self.remove_context = lambda full_data_discrete : full_data_discrete[:,context_dimension:]
     
 if __name__=="__main__":        
-    """
+    
     # Parameters
     sample_size = 100  # Number of samples
     time_steps = 50    # Number of time steps
-    num_states = 10    # Number of states (K)
+    num_states = 2    # Number of states (K)
 
     # Create the dataset with a fixed seed
     dataset = create_dataset(sample_size, time_steps, num_states, seed=42)
@@ -174,11 +176,11 @@ if __name__=="__main__":
     categorical_samples = sample_categorical(dataset)
 
     # Plot the dataset for the first sample
-    plot_dataset(dataset, sample_index=0)
+    plot_dataset(dataset, sample_index=1, save_to="dataset.png")
 
     # Plot the categorical samples for the first sample
-    plot_categorical_samples(categorical_samples, sample_index=0)
-    """
+    plot_categorical_samples(categorical_samples, sample_index=1, save_to="categorical_samples.png")
+    
     data_config = SinusoidalConfig()
     dataloader = SinusoidalDataloader(data_config)
     databatch = dataloader.get_databatch()
