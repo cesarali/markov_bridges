@@ -21,6 +21,7 @@ from markov_bridges.data.abstract_dataloader import (
 from markov_bridges.data.utils import sample_8gaussians, sample_moons
 from torch.distributions import Categorical,Normal,Dirichlet
 from torch.utils.data import DataLoader
+from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
 
 def set_probabilities(config:IndependentMixConfig,return_tensor_samples=False):
     """
@@ -131,8 +132,6 @@ class StatesDataloader:
     def test(self):
         """ Returns a DataLoader for the testing dataset. """
         return self.test_dataloader
-
-from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
 
 class IndependentMixDataloader(MarkovBridgeDataloader):
 

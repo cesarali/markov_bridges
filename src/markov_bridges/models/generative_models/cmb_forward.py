@@ -221,7 +221,7 @@ class MixedForwardMap(EMA,nn.Module):
         # pick loss
         if self.continuous_loss_type == "flow":
             conditional_flow = self.continuous_flow(continuous_sample,databatch.target_continuous,databatch.source_continuous,databatch.time)
-            mse = self.continuous_loss_nn(conditional_flow,databatch.target_continuous)
+            mse = self.continuous_loss_nn(continuous_head,conditional_flow)
         elif self.continuous_loss_type == "drift":
             conditional_drift = self.continuous_drift(databatch.target_continuous,continuous_sample,databatch.time)
             mse = self.continuous_loss_nn(continuous_head,conditional_drift)
