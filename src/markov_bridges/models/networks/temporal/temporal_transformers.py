@@ -209,7 +209,7 @@ class SequenceTransformer(nn.Module):
         #    self.net = DDP(tmp_net, device_ids=[rank])
         #else:
         self.net = tmp_net
-        self.expected_output_shape = [256, 129]
+        self.expected_output_shape = [max_len, self.S]
         self.to(device)
 
     def forward(self,

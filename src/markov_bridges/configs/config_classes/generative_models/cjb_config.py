@@ -23,12 +23,14 @@ from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs impo
 
 from markov_bridges.configs.config_classes.pipelines.pipeline_configs import BasicPipelineConfig
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
+from markov_bridges.configs.config_classes.data.sequences_config import SinusoidalConfig
 from markov_bridges.configs.config_classes.data.graphs_configs import GraphDataloaderGeometricConfig
 
 from markov_bridges.configs.config_classes.trainers.trainer_config import CJBTrainerConfig
 image_data_path = os.path.join(data_path,"raw")
 
 data_configs = {"LakhPianoRoll":LakhPianoRollConfig,
+                "Sinusoidal":SinusoidalConfig,
                 "GraphDataloaderGeometric":GraphDataloaderGeometricConfig}
 
 temporal_network_configs = {
