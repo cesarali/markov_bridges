@@ -183,7 +183,11 @@ class TauDiffusion:
             if self.has_target_discrete:
                 new_discrete = self.TauStep(rates, h, state, end=self.max_rate_at_end)
             if self.has_target_continuous:
-                new_continuous = self.DiffusionStep(drift, h, state)
+                if self.solver_type == 'ode_tau':
+                    new_continuous = self.EulerStep(drift,h,state)
+                if self.solver_type == 'sde_tau':
+                    new_continuous = self.DiffusionStep(drift, h, state)
+                    
             state.update_state(new_discrete, new_continuous)
 
             # SAVE LAST STEP
