@@ -164,18 +164,23 @@ class ExperimentFiles:
             best_model_to_load_path = Path(self.best_model_path)
             last_model_to_load_path = Path(self.last_model)
 
+            if not last_model:
+                if best_model_to_load_path.exists():
+                    results_ = torch.load(best_model_to_load_path,map_location=device)
+                    loaded_path = best_model_to_load_path
+                    return results_
+                else:
+                    last_model = True
+        
             if last_model:
                 if last_model_to_load_path.exists():
                     results_ = torch.load(last_model_to_load_path,map_location=device)
                     loaded_path = last_model_to_load_path
                     return results_
-                
-            if best_model_to_load_path.exists():
-                results_ = torch.load(best_model_to_load_path,map_location=device)
-                loaded_path = best_model_to_load_path
-                return results_
-
-            elif any:
+                else:
+                    any = True
+            
+            if any:
                 best_model_path_checkpoint = self.best_model_path_checkpoint
                 #extract_digits = lambda s: int(re.search(r'\d+', s).group()) if re.search(r'\d+', s) else None
 

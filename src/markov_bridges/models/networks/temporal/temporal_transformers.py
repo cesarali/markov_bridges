@@ -8,6 +8,7 @@ from pprint import pprint
 from torchtyping import TensorType
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from .temporal_embeddings import transformer_timestep_embedding
 
@@ -196,6 +197,8 @@ class SequenceTransformer(nn.Module):
         temb_dim = cfg.temporal_network.temb_dim
         use_one_hot_input = cfg.temporal_network.use_one_hot_input
 
+        self.has_context_discrete = cfg.data.has_context_discrete
+        self.context_discrete_dimension = cfg.data.context_discrete_dimension
         self.S = cfg.data.vocab_size
         max_len = cfg.data.discrete_dimensions
 
@@ -210,18 +213,46 @@ class SequenceTransformer(nn.Module):
         #else:
         self.net = tmp_net
         self.expected_output_shape = [max_len, self.S]
+        self.has_context_discrete = cfg.data.has_context_discrete
+
+        #if self.has_context_discrete:
+        #    self.join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
+        #else:
+        #    self.join_context = lambda context_discrete,data_discrete : data_discrete
+        
+
         self.to(device)
 
     def forward(self,
         x: TensorType["B", "D"],
-        times: TensorType["B"]
+        times:TensorType["B",1],
+        databatch: MarkovBridgeDataNameTuple,
     ) -> TensorType["B", "D", "S"]:
         """
             Returns logits over state space
         """
-        B, D = x.shape
-        S = self.S
-
-        logits = self.net(x.long(), times.long()) # (B, D, S)
-
+        times = times.flatten()
+        if self.has_context_discrete:
+            x = torch.cat([databatch.context_discrete,x],dim=1)
+        logits = self.net(x.long(), times) # (B, D, S)
+        if self.has_context_discrete:
+            logits = logits[:,self.context_discrete_dimension:,:]
         return logits
+    
+    """
+        # loss
+        if self.config.data.has_context_discrete:
+            completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
+            model_classification = self.generative_model.forward_rate.classify(completed_sampled_x, time)
+            model_classification_ = model_classification[:, self.config.data.context_discrete_dimension:,:]
+            # reshape for cross logits
+            model_classification_ = model_classification_.reshape(-1, self.config.data.vocab_size)
+            target_discrete_ = databatch.target_discrete .reshape(-1)
+
+            loss = self.generative_model.loss(model_classification_, target_discrete_.long())
+        else:
+            model_classification = self.generative_model.forward_rate.classify(sampled_x, time)
+            model_classification_ = model_classification.view(-1, self.config.data.vocab_size)
+            target_discrete_ = databatch.target_discrete .reshape(-1)
+            loss = self.generative_model.loss(model_classification_,target_discrete_.long())
+    """

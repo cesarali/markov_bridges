@@ -19,13 +19,13 @@ def test_sample_network():
 
     data = cjb.dataloader.transform_to_native_shape(databatch)
     sample = cjb.pipeline(20)
-    raw_sample = cjb.dataloader.transform_to_native_shape(sample.raw_sample)
+    raw_sample = cjb.dataloader.transform_to_native_shape(sample.sample)
     print(raw_sample.shape)
 
 def test_metrics_log():
+
     experiment_config = get_graph_experiment()
     cjb = CJB(experiment_config)
-
     log_metrics = LogMetrics(cjb,[GraphMetricsConfig(plot_graphs=True,
                                                      methods=[],
                                                      windows=True)])

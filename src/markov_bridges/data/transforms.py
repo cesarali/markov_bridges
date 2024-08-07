@@ -47,7 +47,7 @@ class FromUpperDiagonalTransform:
         upper_tri_indices = torch.triu_indices(matrix_size, matrix_size, offset=1, device=upper_diagonal_tensor.device)
 
         # Fill the upper diagonal part of the matrices
-        full_matrices[:, upper_tri_indices[0], upper_tri_indices[1]] = upper_diagonal_tensor
+        full_matrices[:, upper_tri_indices[0], upper_tri_indices[1]] = upper_diagonal_tensor.float()
 
         # Transpose and fill the lower diagonal part to make the matrices symmetric
         full_matrices = full_matrices + full_matrices.transpose(1, 2)

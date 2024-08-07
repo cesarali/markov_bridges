@@ -85,6 +85,7 @@ class GraphDataloader(MarkovBridgeDataloader):
         self.graph_config.temporal_net_expected_shape = self.expected_shape
         self.graph_config.number_of_nodes = self.max_node_num
         self.graph_config.discrete_dimensions = self.dimension
+        self.graph_config.discrete_generation_dimension = self.dimension
 
         train_data = self.get_data_divisions(train_data,self.graph_config)
         train_data = MarkovBridgeDataset(train_data)

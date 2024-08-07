@@ -25,7 +25,7 @@ class GraphDataloaderGeometricConfig(MarkovBridgeDataConfig):
     max_node_num: int = None
     max_feat_num: int = None
 
-    discrete_dimensions: int = None
+    discrete_dimensions: int = 20
     vocab_size: int = 2
 
     total_data_size:int = None

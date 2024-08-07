@@ -3,7 +3,7 @@ import json
 from typing import List,Union
 
 from markov_bridges.models.generative_models.cjb import CJB
-from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
+from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeapingOutput
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple,MarkovBridgeDataClass
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.configs.config_classes.metrics.metrics_configs import BasicMetricConfig
@@ -46,7 +46,7 @@ class BasicMetric:
             self.plots_path = None
 
 
-    def batch_operation(self,databatch:MarkovBridgeDataNameTuple,generative_sample:CJBPipelineOutput):
+    def batch_operation(self,databatch:MarkovBridgeDataNameTuple,generative_sample:TauLeapingOutput):
         pass
 
     def final_operation(self,all_metrics,samples_gather:MarkovBridgeDataClass,epoch=None):

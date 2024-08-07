@@ -22,15 +22,19 @@ class MarkovBridgeDataConfig:
     source_continuous_type: str = None
 
     # dimensions
-    continuos_dimensions: int = 0
     discrete_dimensions: int = 256
-    
+    continuos_dimensions: int = 0
+
     context_discrete_dimension:int = 0
     context_continuous_dimension:int = 0
 
     vocab_size: int = 129
     max_training_size: int = None
     max_test_size:int = None
+
+    def __post_init__(self):
+        self.discrete_generation_dimension = self.discrete_dimensions - self.context_discrete_dimension
+        self.continuous_generation_dimension = self.continuos_dimensions - self.context_continuous_dimension
 
 @dataclass
 class IndependentMixConfig(MarkovBridgeDataConfig):

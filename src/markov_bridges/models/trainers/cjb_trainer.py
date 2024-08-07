@@ -131,9 +131,6 @@ class CJBTrainer(Trainer):
     def train_step(self,databatch:MarkovBridgeDataNameTuple, number_of_training_step,  epoch):
         conditional_dimension = self.config.data.context_discrete_dimension
 
-        join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
-        remove_context = lambda full_data_discrete : full_data_discrete[:,conditional_dimension:]
-
         # data pair and time sample
         target_discrete, source_discrete = self.generative_model.sample_pair(databatch,self.device)
 
@@ -143,24 +140,13 @@ class CJBTrainer(Trainer):
 
         # sample x from z
         sampled_x = self.generative_model.forward_rate.sample_x(target_discrete, source_discrete, time).float()
-        
         databatch = nametuple_to_device(databatch, self.device)
-
+        databatch.time
         # loss
-        if self.config.data.has_context_discrete:
-            completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
-            model_classification = self.generative_model.forward_rate.classify(completed_sampled_x, time)
-            model_classification_ = model_classification[:, self.config.data.context_discrete_dimension:,:]
-            # reshape for cross logits
-            model_classification_ = model_classification_.reshape(-1, self.config.data.vocab_size)
-            target_discrete_ = databatch.target_discrete .reshape(-1)
-
-            loss = self.generative_model.loss(model_classification_, target_discrete_.long())
-        else:
-            model_classification = self.generative_model.forward_rate.classify(sampled_x, time)
-            model_classification_ = model_classification.view(-1, self.config.data.vocab_size)
-            target_discrete_ = databatch.target_discrete .reshape(-1)
-            loss = self.generative_model.loss(model_classification_,target_discrete_.long())
+        model_classification = self.generative_model.forward_rate.classify(sampled_x, databatch.time, databatch)
+        model_classification_ = model_classification.reshape(-1, self.config.data.vocab_size)
+        target_discrete_ = databatch.target_discrete.reshape(-1)
+        loss = self.generative_model.loss(model_classification_,target_discrete_.long())
 
         loss = loss.mean()
         # optimization
@@ -221,22 +207,12 @@ class CJBTrainer(Trainer):
             sampled_x = self.generative_model.forward_rate.sample_x(target_discrete, source_discrete, time).float()
                 
             databatch = nametuple_to_device(databatch, self.device)
-
             # loss
-            if self.config.data.has_context_discrete:
-                completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
-                model_classification = self.generative_model.forward_rate.classify(completed_sampled_x, time)
-                model_classification_ = model_classification[:, self.config.data.context_discrete_dimension:,:]
-                # reshape for cross logits
-                model_classification_ = model_classification_.reshape(-1, self.config.data.vocab_size)
-                target_discrete_ = databatch.target_discrete.reshape(-1)
 
-                loss = self.generative_model.loss(model_classification_, target_discrete_.long())
-            else:
-                model_classification = self.generative_model.forward_rate.classify(sampled_x, time)
-                model_classification_ = model_classification.view(-1, self.config.data.vocab_size)
-                target_discrete_ = databatch.target_discrete.reshape(-1)
-                loss = self.generative_model.loss(model_classification_,target_discrete_.long())
+            model_classification = self.generative_model.forward_rate.classify(sampled_x, databatch.time, databatch)
+            model_classification_ = model_classification.reshape(-1, self.config.data.vocab_size)
+            target_discrete_ = databatch.target_discrete.reshape(-1)
+            loss = self.generative_model.loss(model_classification_,target_discrete_.long())
 
             loss = loss.mean()
             self.writer.add_scalar('test loss', loss.item(), number_of_test_step)
@@ -299,3 +275,21 @@ class CJBTrainer(Trainer):
                 all_metrics["loss_variance_times"] = self.loss_stats_variance
         return {},all_metrics
 
+
+"""
+        # loss
+        if self.config.data.has_context_discrete:
+            completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
+            model_classification = self.generative_model.forward_rate.classify(completed_sampled_x, time)
+            model_classification_ = model_classification[:, self.config.data.context_discrete_dimension:,:]
+            # reshape for cross logits
+            model_classification_ = model_classification_.reshape(-1, self.config.data.vocab_size)
+            target_discrete_ = databatch.target_discrete .reshape(-1)
+
+            loss = self.generative_model.loss(model_classification_, target_discrete_.long())
+        else:
+            model_classification = self.generative_model.forward_rate.classify(sampled_x, time)
+            model_classification_ = model_classification.view(-1, self.config.data.vocab_size)
+            target_discrete_ = databatch.target_discrete .reshape(-1)
+            loss = self.generative_model.loss(model_classification_,target_discrete_.long())
+"""

@@ -373,7 +373,7 @@ from markov_bridges.models.metrics.abstract_metrics import BasicMetric
 from markov_bridges.configs.config_classes.metrics.metrics_configs import GraphMetricsConfig
 from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
-from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
+from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeapingOutput
 
 ##################################################################################################
 
@@ -388,11 +388,11 @@ class GraphsMetrics(BasicMetric):
         self.methods = metrics_config.methods
         self.windows = metrics_config.windows
 
-    def batch_operation(self, databatch: MarkovBridgeDataNameTuple, generative_sample: CJBPipelineOutput):
+    def batch_operation(self, databatch: MarkovBridgeDataNameTuple, generative_sample: TauLeapingOutput):
         pass
 
     def final_operation(self, all_metrics,samples_gather,epoch=None):
-        generative_sample = self.transform_to_native_shape(samples_gather.raw_sample)
+        generative_sample = self.transform_to_native_shape(samples_gather.sample)
         target_discrete = self.transform_to_native_shape(samples_gather.target_discrete)
         
         generative_graphs = self.networkx_from_sample(generative_sample)

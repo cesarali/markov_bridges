@@ -34,9 +34,11 @@ def test_log_metrics_class():
     cjb = CJB(model_config)
     # define metric class
     log_metrics = LogMetrics(cjb,
-                             metrics_configs_list=[MusicPlotConfig(),
-                                                   HellingerMetricConfig()],
+                             metrics_configs_list=[MusicPlotConfig(),HellingerMetricConfig()],
                              debug=True)
+    #HellingerMetricConfig()
+    #MusicPlotConfig()
+
     # calculate metrics
     all_metrics = log_metrics(cjb,None)
     # print metrics obtained

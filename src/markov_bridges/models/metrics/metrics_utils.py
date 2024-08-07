@@ -2,7 +2,7 @@ import torch
 from typing import Union,List
 
 from markov_bridges.models.generative_models.cjb import CJB
-from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
+from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeapingOutput
 from markov_bridges.models.metrics.abstract_metrics import BasicMetric
 from markov_bridges.models.metrics.music_metrics import MusicPlots
 from markov_bridges.models.metrics.histogram_metrics import HellingerMetric,MixedHellingerMetric
@@ -30,11 +30,11 @@ class GatherSamples:
         self.target_discrete: List[torch.tensor] = []
         self.target_continuous: List[torch.tensor] = []
 
-        self.raw_sample:List[torch.tensor] = []
+        self.sample:List[torch.tensor] = []
 
-    def gather(self,generative_sample:CJBPipelineOutput,remaining_samples:int):
+    def gather(self,generative_sample:TauLeapingOutput,remaining_samples:int):
         # how much to take
-        raw_sample = generative_sample.raw_sample
+        raw_sample = generative_sample.discrete
         batch_size = raw_sample.size(0)
         if remaining_samples is None:
             take_size  = batch_size
@@ -48,16 +48,16 @@ class GatherSamples:
         target_continuous = None
 
         # Check for attributes and assign values if they exist
-        if hasattr(generative_sample.x_0, 'context_discrete'):
-            context_discrete = generative_sample.x_0.context_discrete[:take_size]
-        if hasattr(generative_sample.x_0, 'context_continuous'):
-            context_continuous = generative_sample.x_0.context_continuous[:take_size]
-        if hasattr(generative_sample.x_0, 'target_discrete'):
-            target_discrete = generative_sample.x_0.target_discrete[:take_size]
-        if hasattr(generative_sample.x_0, 'target_continuous'):
-            target_continuous = generative_sample.x_0.target_continuous[:take_size]
+        if hasattr(generative_sample.x0, 'context_discrete'):
+            context_discrete = generative_sample.x0.context_discrete[:take_size]
+        if hasattr(generative_sample.x0, 'context_continuous'):
+            context_continuous = generative_sample.x0.context_continuous[:take_size]
+        if hasattr(generative_sample.x0, 'target_discrete'):
+            target_discrete = generative_sample.x0.target_discrete[:take_size]
+        if hasattr(generative_sample.x0, 'target_continuous'):
+            target_continuous = generative_sample.x0.target_continuous[:take_size]
 
-        raw_sample = generative_sample.raw_sample[:take_size]
+        sample = generative_sample.discrete[:take_size]
 
         # Append to lists only if they are not None
         if context_discrete is not None:
@@ -69,7 +69,7 @@ class GatherSamples:
         if target_continuous is not None:
             self.target_continuous.append(target_continuous)
 
-        self.raw_sample.append(raw_sample)
+        self.sample.append(sample)
         if remaining_samples is not None:
             remaining_samples = remaining_samples - take_size
 
@@ -84,8 +84,8 @@ class GatherSamples:
             self.target_discrete = torch.cat(self.target_discrete,axis=0) 
         if len(self.target_continuous) > 0:
             self.target_continuous = torch.cat(self.target_continuous,axis=0)
-        if len(self.raw_sample) > 0:
-            self.raw_sample = torch.cat(self.raw_sample,axis=0)
+        if len(self.sample) > 0:
+            self.sample = torch.cat(self.sample,axis=0)
 
 def load_metric(cjb:CJB,metric_config:Union[str,BasicMetricConfig]):
     # Metrics can be passed as simple strings or with the full ConfigClass
@@ -269,7 +269,7 @@ class LogMetrics:
         return all_metrics
         
     def gather_samples(self,
-                       generative_sample:CJBPipelineOutput,
+                       generative_sample:TauLeapingOutput,
                        remaining_samples:int):
         """
         for metrics that requiere aggregated samples we gather 

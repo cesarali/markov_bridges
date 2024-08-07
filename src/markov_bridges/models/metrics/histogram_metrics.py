@@ -14,7 +14,7 @@ from markov_bridges.configs.config_classes.metrics.metrics_configs import (
 # METRICS CLASSES
 #===============================================
 
-from markov_bridges.models.pipelines.pipeline_cjb import CJBPipelineOutput
+from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeapingOutput
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
 from markov_bridges.models.metrics.abstract_metrics import BasicMetric
@@ -36,7 +36,7 @@ class HellingerMetric(BasicMetric):
         super().__init__(model,metrics_config)
 
         self.binary = metrics_config.binary
-        self.dimensions = model.config.data.discrete_dimensions
+        self.dimensions = model.config.data.discrete_generation_dimension
         self.vocab_size = model.config.data.vocab_size
         self.plot_histogram = metrics_config.plot_histogram 
         self.plot_binary_histogram = metrics_config.plot_binary_histogram
@@ -49,24 +49,20 @@ class HellingerMetric(BasicMetric):
         self.generative_histogram = torch.zeros((self.dimensions,self.vocab_size))
         self.real_histogram = torch.zeros((self.dimensions,self.vocab_size))
 
-    def batch_operation(self,batch:MarkovBridgeDataNameTuple,generative_sample:CJBPipelineOutput):
+    def batch_operation(self,batch:MarkovBridgeDataNameTuple,generative_sample:TauLeapingOutput):
         """
         aggregates the statistics to obtain histograms
         """
         batch_size = batch.target_discrete.size(0)
         self.sample_size += batch_size
 
-        if self. has_context_discrete:
-            original_sample = self.join_context(batch.context_discrete,batch.target_discrete)
-            noise_sample = self.join_context(batch.context_discrete,batch.source_discrete)
-        else:
-            original_sample = batch.target_discrete
-            noise_sample = batch.source_discrete
+        original_sample = batch.target_discrete
+        noise_sample = batch.source_discrete
 
         # reshape for one hot
         noise_sample = noise_sample.detach().cpu()
         original_sample = original_sample.detach().cpu()
-        generative_sample = generative_sample.raw_sample.detach().cpu()
+        generative_sample = generative_sample.discrete.detach().cpu()
 
         noise_sample = noise_sample.reshape(-1)
         original_sample = original_sample.reshape(-1)

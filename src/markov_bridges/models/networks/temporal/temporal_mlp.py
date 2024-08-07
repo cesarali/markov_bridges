@@ -58,7 +58,8 @@ class TemporalDeepMLP(nn.Module):
         layers.append(nn.Linear(self.hidden_layer, self.dimensions * self.vocab_size))
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x, times):
+    def forward(self, x, times, databatch):
+        times = times.flatten()
         batch_size = x.shape[0]
         time_embeddings = transformer_timestep_embedding(times, embedding_dim=self.time_embed_dim)
         x = torch.concat([x, time_embeddings], dim=1)
@@ -91,7 +92,8 @@ class TemporalMLP(nn.Module):
         self.f1 = nn.Linear(self.dimensions, self.hidden_layer)
         self.f2 = nn.Linear(self.hidden_layer + self.time_embed_dim, self.dimensions * self.vocab_size)
 
-    def forward(self, x, times):
+    def forward(self, x, times,databatch):
+        times = times.flatten()
         batch_size = x.shape[0]
         time_embbedings = transformer_timestep_embedding(times,
                                                          embedding_dim=self.time_embed_dim)

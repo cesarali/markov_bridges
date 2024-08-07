@@ -184,29 +184,19 @@ class ClassificationForwardRate(EMA,nn.Module):
     def define_thermostat(self,config):
         self.thermostat = load_thermostat(config)
 
-    def classify(self,x,times):
+    def classify(self,x,time,databatch,sample=False):
         """
-        this function takes the shape [batch_size,dimension,vocab_size] and make all the trsformations
-        to handle the temporal network
+        this function takes the shape [batch_size,dimension,vocab_size] 
+        
 
         :param x: [batch_size,dimension,vocab_size]
         :param times:
         :return:
         """
-        batch_size = x.size(0)
-        expected_shape_for_temporal = torch.Size([batch_size]+self.expected_data_shape)
-        current_shape = x.shape
-        if current_shape != expected_shape_for_temporal:
-            x = x.reshape(expected_shape_for_temporal)
-        change_logits = self.temporal_network(x,times)
-
-        if self.temporal_network.expected_output_shape != [self.dimensions,self.vocab_size]:
-            change_logits = change_logits.reshape(batch_size, -1)
-            change_logits = self.temporal_to_rate(change_logits)
-            change_logits = change_logits.reshape(batch_size,self.dimensions,self.vocab_size)
+        change_logits = self.temporal_network(x,time,databatch)
         return change_logits
 
-    def forward(self, x, time, conditional=None):
+    def forward(self, x, time, databatch):
         """
         RATE
 
@@ -225,7 +215,7 @@ class ClassificationForwardRate(EMA,nn.Module):
         B = (w_1t * self.vocab_size) / (1. - w_1t)
         C = w_1t
 
-        change_logits = self.classify(x, time)
+        change_logits = self.classify(x,time,databatch,sample=True)
         change_classifier = softmax(change_logits, dim=2)
 
         #x = x.reshape(batch_size,self.dimensions)

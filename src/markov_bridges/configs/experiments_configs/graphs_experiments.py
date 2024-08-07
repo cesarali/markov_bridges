@@ -18,6 +18,7 @@ from markov_bridges.configs.config_classes.metrics.metrics_configs import Metric
 from markov_bridges.configs.config_classes.trainers.trainer_config import CJBTrainerConfig
 from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.utils.experiment_files import ExperimentFiles
+from markov_bridges.configs.config_classes.pipelines.pipeline_configs import BasicPipelineConfig
 
 from dataclasses import asdict
 
@@ -27,13 +28,20 @@ def get_graph_experiment(dataset_name="community_small",number_of_epochs=100):
     experiment_config.data = dataset_str_to_config[dataset_name](batch_size=20)
     #temporal network config
     experiment_config.temporal_network = TemporalMLPConfig(hidden_dim=150,time_embed_dim=50)
+    #pipelines 
+    experiment_config.pipeline =  BasicPipelineConfig(number_of_steps=200,
+                                                      max_rate_at_end=True)
     #trainer config
     experiment_config.trainer = CJBTrainerConfig(number_of_epochs=number_of_epochs,learning_rate=1e-3)
     # define metrics
     metrics = [HellingerMetricConfig(plot_binary_histogram=True),
                GraphMetricsConfig(plot_graphs=True,
-                                  methods=["orbit"],
-                                  windows=True)] # CHANGE IF ORCA IS COMPILED IN UNIX
+                                  methods=[],
+                                  windows=True)]
+               # HellingerMetricConfig(plot_binary_histogram=True)
+               #GraphMetricsConfig(plot_graphs=True,
+               #                   methods=["orbit"],
+               #                   windows=True)] # CHANGE IF ORCA IS COMPILED IN UNIX
     experiment_config.trainer.metrics = metrics
     return experiment_config
 
@@ -41,7 +49,6 @@ def get_graph_experiment(dataset_name="community_small",number_of_epochs=100):
 def continue_graph_experiment(experiment_dir):
     experiment_files = ExperimentFiles(experiment_name="cjb",
                                        experiment_type="graph")    
-    
     trainer = CJBTrainer(experiment_files=experiment_files,
                          experiment_dir=experiment_dir,
                          starting_type="last")
@@ -50,7 +57,7 @@ def continue_graph_experiment(experiment_dir):
 if __name__=="__main__":
     start = True
     if start:
-        experiment_config = get_graph_experiment(number_of_epochs=5)
+        experiment_config = get_graph_experiment(number_of_epochs=100)
         experiment_files = ExperimentFiles(experiment_name="cjb",
                                         experiment_type="graph")    
         trainer = CJBTrainer(config=experiment_config,

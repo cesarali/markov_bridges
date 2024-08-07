@@ -15,7 +15,8 @@ def plot_songs(original_sample,
     if repeating:
         get_song_index = lambda song_index,repeat_sample,example_index:song_index*repeat_sample+example_index
     prepare_song = lambda x,number_of_steps:x[:number_of_steps].cpu().numpy()
-
+    number_of_steps = 2*conditional_dimension
+    
     fig, axs = plt.subplots(2, 3, figsize=(15, 5)) # Create a 2x3 grid of subplots
 
     if repeating:
