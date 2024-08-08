@@ -4,7 +4,11 @@ from dataclasses import dataclass
 class MixedDeepMLPConfig:
     name : str = "MixedDeepMLP"
     time_embed_dim : int = 50
+
+    continuous_embed_dim: int = 50
     discrete_embed_dim: int = 50
+    merge_embed_dim: int = 100
+
     hidden_dim : int = 250
     activation : str = 'ReLU'
     num_layers : int = 4

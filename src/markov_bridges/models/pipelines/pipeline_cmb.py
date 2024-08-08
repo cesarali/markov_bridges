@@ -18,7 +18,7 @@ class CMBPipeline:
         self.rate_model:MixedForwardMap = rate_model
         self.dataloder:MarkovBridgeDataloader = dataloader
         self.device = check_model_devices(self.rate_model)
-        self.sampler = TauDiffusion(config,dataloader.join_context)
+        self.sampler = TauDiffusion(config)
         
     def generate_sample(self,
                         databatch:MarkovBridgeDataNameTuple=None,

@@ -10,23 +10,21 @@ from dataclasses import asdict
 import numpy as np
 from torch.nn.functional import softmax
 from markov_bridges.utils.experiment_files import ExperimentFiles
-
 from markov_bridges.data.dataloaders_utils import get_dataloaders
 from markov_bridges.data.graphs_dataloader import GraphDataloader
 from markov_bridges.models.pipelines.pipeline_cmb import CMBPipeline
-
 from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
 from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
+from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.models.generative_models.cmb_forward import MixedForwardMap
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 
-from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
 @dataclass
 class CMB:
     """
-    This class contains all elements to sample and train a conditional jump bridge model
+    This class contains all elements to sample and train a conditional markov bridge model
     
     if DEVICE is not provided it is obtained from the trainer config 
 
@@ -68,7 +66,7 @@ class CMB:
         else:
             self.device = device
         
-        self.forward_map = MixedForwardMap(self.config, self.device,self.dataloader.join_context).to(self.device)
+        self.forward_map = MixedForwardMap(self.config, self.device).to(self.device)
         self.pipeline = CMBPipeline(self.config,self.forward_map,self.dataloader)
 
         if self.config.optimal_transport.cost == "log":
@@ -107,12 +105,13 @@ class CMB:
         number_of_training_steps = results_["number_of_training_steps"]
         epoch  = results_["epoch"]
 
+        # set new starting values of epochs if model needs to be trained further
         self.config.trainer.epoch = epoch + 1
         self.config.trainer.number_of_test_step = number_of_test_step + 1
         self.config.trainer.number_of_training_steps = number_of_training_steps + 1
 
         # set forward model
-        self.forward_map = MixedForwardMap(self.config,self.device,self.dataloader.join_context).to(self.device)
+        self.forward_map = MixedForwardMap(self.config,self.device).to(self.device)
         self.forward_map.mixed_network = results_["model"]
         self.forward_map = self.forward_map.to(self.device)
         self.forward_map.mixed_network = self.forward_map.mixed_network.to(self.device)

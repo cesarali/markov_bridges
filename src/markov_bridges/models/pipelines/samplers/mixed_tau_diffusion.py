@@ -19,10 +19,11 @@ class MixedTauState:
     """
     discrete: torch.Tensor = None
     continuous: torch.Tensor = None
+    state_0:MarkovBridgeDataNameTuple=None
     save_ts: torch.Tensor = None
     number_of_paths: int = 0 
 
-    def __init__(self, config:CMBConfig, state: MarkovBridgeDataNameTuple, join_context,save_ts=None):
+    def __init__(self, config:CMBConfig, state: MarkovBridgeDataNameTuple,save_ts=None):
         self.has_target_continuous = config.data.has_target_continuous
         self.has_target_discrete =  config.data.has_target_discrete
 
@@ -36,12 +37,11 @@ class MixedTauState:
 
         if config.data.has_target_continuous:
             self.continuous = state.source_continuous
-
             self.device = self.continuous.device
             self.number_of_paths = self.continuous.size(0)
-        
+
+        self.state_0 = state
         self.save_ts = save_ts
-        self.discrete,self.continuous = join_context(state,self.discrete,self.continuous)
 
     def update_state(self, new_discrete, new_continuos):
         self.discrete = new_discrete
@@ -67,7 +67,7 @@ class TauDiffusion:
     If the return_path is set to True during sampling, the states at save_ts times will be stored.
     save_ts is defined for the whole path if number_of_intermediaries is set to None
     """
-    def __init__(self, config: CMBConfig, join_context):
+    def __init__(self, config: CMBConfig):
         self.config = config
         self.D = config.data.discrete_dimensions
         self.S = config.data.vocab_size
@@ -81,7 +81,6 @@ class TauDiffusion:
 
         self.has_target_continuous = config.data.has_target_continuous
         self.has_target_discrete = config.data.has_target_discrete
-        self.join_context = join_context
 
     def define_time(self, return_path):
         """
@@ -146,7 +145,7 @@ class TauDiffusion:
             # Define Simulation Times
             ts, save_ts = self.define_time(return_path)
             # Define States 
-            state = MixedTauState(self.config,state_0,self.join_context,save_ts)
+            state = MixedTauState(self.config,state_0,save_ts)
             
             new_discrete = state.discrete
             new_continuous = state.continuous
@@ -158,7 +157,8 @@ class TauDiffusion:
 
                 rates, drift = forward_model.forward_map(state.discrete,
                                                          state.continuous,
-                                                         times)
+                                                         times,
+                                                         state_0)
                 # moves the variables forward
                 if self.has_target_discrete:
                     new_discrete = self.TauStep(rates, h, state)
@@ -179,7 +179,8 @@ class TauDiffusion:
             last_time = self.min_t * torch.ones((state.number_of_paths,), device=state.device)
             rates, drift = forward_model.forward_map(state.discrete,
                                                      state.continuous,
-                                                     last_time)
+                                                     last_time,
+                                                     state_0)
             if self.has_target_discrete:
                 new_discrete = self.TauStep(rates, h, state, end=self.max_rate_at_end)
             if self.has_target_continuous:

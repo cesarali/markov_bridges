@@ -122,7 +122,7 @@ class CMBTrainer(Trainer):
 
         return np.inf
 
-    def train_step(self,databatch:MarkovBridgeDataNameTuple, number_of_training_step,  epoch):
+    def train_step(self,databatch:MarkovBridgeDataNameTuple, number_of_training_step, epoch):
         # time selection
         databatch = nametuple_to_device(databatch, self.device)
 

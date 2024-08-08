@@ -21,7 +21,6 @@ from markov_bridges.configs.config_classes.trainers.trainer_config import CJBTra
 from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
-
 def conditional_music_experiment(number_of_epochs=3,sinusoidal=False)->CJBConfig:
     experiment_config = CJBConfig()
     # data
@@ -51,10 +50,9 @@ def conditional_music_experiment(number_of_epochs=3,sinusoidal=False)->CJBConfig
     # metrics
     # experiment_config.trainer.metrics = [HellingerMetricConfig(),
     #                                      MusicPlotConfig()]    
-    experiment_config.trainer.metrics = []
+    experiment_config.trainer.metrics = [MusicPlotConfig()]
     
     return experiment_config
-
 
 def continue_music_experiment(experiment_dir):
     experiment_files = ExperimentFiles(experiment_name="cjb",
@@ -63,7 +61,6 @@ def continue_music_experiment(experiment_dir):
                          experiment_dir=experiment_dir, # experiment dir of experiment to start with
                          starting_type="last") # WHERE TO START last IS LAST RECORDED MODEL
     trainer.train()
-
 
 if __name__=="__main__":
     start = True # START NEW EXPERIMENT

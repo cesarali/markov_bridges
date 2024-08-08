@@ -186,4 +186,3 @@ if __name__=="__main__":
     dataloader = SinusoidalDataloader(data_config)
     databatch = dataloader.get_databatch()
     print(databatch)
-    """

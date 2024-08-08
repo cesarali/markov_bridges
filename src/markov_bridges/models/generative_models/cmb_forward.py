@@ -19,7 +19,7 @@ class MixedForwardMap(EMA,nn.Module):
     sample and train a Mixed Variable Bridge
 
     """
-    def __init__(self, config:CMBConfig,device,join_context=None):
+    def __init__(self, config:CMBConfig,device):
         """
         join_context(context_discrete,discrete_data,context_continuous,continuuous_data)->full_discrete,full_continuous: 
         this function should allow us to create a full discrete and continuous vector from the context and data
@@ -46,8 +46,6 @@ class MixedForwardMap(EMA,nn.Module):
         self.context_continuous_dimension = config_data.context_continuous_dimension
         self.continuous_loss_type = config.continuous_loss_type
 
-        self.join_context = join_context
-
         self.define_deep_models(config,device)
         self.define_bridge_parameters(config)
         
@@ -65,7 +63,7 @@ class MixedForwardMap(EMA,nn.Module):
         self.continuous_bridge_ = None
         
     #====================================================================
-    # SAMPLE BRIDGE
+    # INTERPOLATIONS AND/OR BRIDGES
     #====================================================================
     def sample_discrete_bridge(self,x_1,x_0,time):
         device = x_1.device
@@ -110,10 +108,9 @@ class MixedForwardMap(EMA,nn.Module):
             continuous_sample = self.sample_continuous_bridge(target_continuous,source_continuous,time)
         else:
             continuous_sample = None
-        return discrete_sample,continuous_sample
-    
+        return discrete_sample,continuous_sample    
     #====================================================================
-    # RATES AND DRIFT for GENERATION
+    # RATES,FLOWS AND DRIFT for GENERATION
     #====================================================================
     def discrete_rate(self,change_logits, x, time):
         """
@@ -154,13 +151,12 @@ class MixedForwardMap(EMA,nn.Module):
         B = t**2 / (t * (1 - t))
         C = -1 * (1 - t)**2 / (t * (1 - t))
         return A * x + B * x1 + C * x0 
-
-    
-    def forward_map(self,discrete_sample,continuous_sample,time):
+   
+    def forward_map(self,discrete_sample,continuous_sample,time,databatch):
         if len(time.shape) > 1:
             time = time.flatten()
 
-        discrete_head,continuous_head = self.mixed_network(discrete_sample, continuous_sample, time)
+        discrete_head,continuous_head = self.mixed_network(discrete_sample, continuous_sample, time,databatch)
 
         if self.has_target_discrete:
             rate = self.discrete_rate(discrete_head, discrete_sample, time)
@@ -179,20 +175,15 @@ class MixedForwardMap(EMA,nn.Module):
         else:
             vector_field = None
         return rate, vector_field
-    
     #====================================================================
     # LOSS
     #====================================================================
     def loss(self,databatch:MarkovBridgeDataNameTuple,discrete_sample,continuous_sample):
-        
-        # IF WE HAVE CONTEXT JOIN FOR FULL DATA
-        if self.has_context_continuous or self.has_context_discrete:
-            discrete_sample,continuous_sample = self.join_context(databatch,
-                                                                  discrete_sample,
-                                                                  continuous_sample)
-        
         # Calculate Heads For Classifier or Mean Average
-        discrete_head,continuous_head = self.mixed_network(discrete_sample,continuous_sample,databatch.time)
+        discrete_head,continuous_head = self.mixed_network(discrete_sample,
+                                                           continuous_sample,
+                                                           databatch.time,
+                                                           databatch)
         
         # Train What is Needed
         full_loss = torch.Tensor([0.]).to(discrete_sample.device if discrete_sample is not None else continuous_sample.device)
@@ -217,7 +208,6 @@ class MixedForwardMap(EMA,nn.Module):
         return discrete_loss
     
     def continuous_loss(self, databatch:MarkovBridgeDataNameTuple, continuous_head, continuous_sample=None):
-        
         # If has context continuous
         if self.has_context_continuous:
             continuous_head = continuous_head[:, self.context_continuous_dimension:,:]
@@ -234,8 +224,7 @@ class MixedForwardMap(EMA,nn.Module):
         elif self.continuous_loss_type == "regression":
             mse = self.continuous_loss_nn(continuous_head, databatch.target_continuous)
 
-        return mse
-    
+        return mse    
     #====================================================================
     # DISCRETE BRIDGE FUNCTIONS
     #====================================================================

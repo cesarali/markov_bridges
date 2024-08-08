@@ -18,7 +18,7 @@ def test_mixed_tau():
 
     dataloader = IndependentMixDataloader(model_config.data)
     databatch = dataloader.get_databatch()
-    cfm = MixedForwardMap(model_config,device=torch.device("cpu"),join_context=dataloader.join_context)
+    cfm = MixedForwardMap(model_config,device=torch.device("cpu"))
     pipeline = CMBPipeline(model_config,cfm,dataloader)
     
     for databatch in dataloader.test():
