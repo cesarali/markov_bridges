@@ -189,10 +189,11 @@ class MixedForwardMapL(EMA,L.LightningModule):
                                                            databatch.time,
                                                            databatch)
         # Train What is Needed
-        full_loss = torch.Tensor([0.])
         if self.has_target_discrete:
+            full_loss = torch.Tensor([0.]).to(discrete_sample.device)
             full_loss += self.discrete_loss(databatch,discrete_head,discrete_sample).mean()
         if self.has_target_continuous:
+            full_loss = torch.Tensor([0.]).to(continuous_sample.device)
             full_loss += self.continuous_loss(databatch,continuous_head,continuous_sample).mean()
         return full_loss
     

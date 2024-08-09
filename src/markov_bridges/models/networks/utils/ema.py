@@ -60,8 +60,8 @@ class EMA():
         for c_param, param in zip(self.collected_params, self.parameters()):
             param.data.copy_(c_param.data)
 
-    def load_state_dict(self, state_dict):
-        missing_keys, unexpected_keys = nn.Module.load_state_dict(self, state_dict, strict=False)
+    def load_state_dict(self, state_dict, strict=False):
+        missing_keys, unexpected_keys = nn.Module.load_state_dict(self, state_dict, strict=strict)
 
         # print("state dict keys")
         # for key in state_dict.keys():
