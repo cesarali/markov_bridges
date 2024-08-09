@@ -64,6 +64,7 @@ class IndependentMixConfig(MarkovBridgeDataConfig):
     test_data_size: int = 1500
 
     batch_size:int = 64
+    fields:list = field(default_factory=lambda:[])
 
     def __post_init__(self):
         if self.has_context_continuous:

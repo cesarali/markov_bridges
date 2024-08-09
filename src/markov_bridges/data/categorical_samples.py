@@ -4,6 +4,7 @@ from dataclasses import dataclass,asdict
 from torch.distributions import Categorical
 from torch.utils.data import TensorDataset,DataLoader
 from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
+from collections import namedtuple
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -18,9 +19,9 @@ from markov_bridges.data.abstract_dataloader import (
     MarkovBridgeDataset
 )
 
+from torch.utils.data import DataLoader
 from markov_bridges.data.utils import sample_8gaussians, sample_moons
 from torch.distributions import Categorical,Normal,Dirichlet
-from torch.utils.data import DataLoader
 from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
 
 def set_probabilities(config:IndependentMixConfig,return_tensor_samples=False):
@@ -231,11 +232,13 @@ class IndependentMixDataloader(MarkovBridgeDataloader):
         test_data = self.get_data_divisions(type="test")
         test_data = MarkovBridgeDataset(test_data)
 
-        self.DatabatchNameTuple = test_data.DatabatchNameTuple
         self.fields = test_data.fields
-        
+        self.DatabatchNameTuple = namedtuple("DatabatchClass", self.fields)
+
         self.train_dataloader = DataLoader(train_data, batch_size=self.data_config.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_data,batch_size=self.data_config.batch_size, shuffle=True)
+
+        self.data_config.fields = self.fields
 
     def join_context(self,databatch:MarkovBridgeDataNameTuple,discrete_data=None,continuous_data=None):
         if self.has_context_continuous:

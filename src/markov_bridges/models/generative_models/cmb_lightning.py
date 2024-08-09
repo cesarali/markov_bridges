@@ -10,6 +10,7 @@ from torch.optim.adam import Adam
 
 from typing import List
 from dataclasses import dataclass,field
+from collections import namedtuple
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import ExponentialLR
@@ -40,7 +41,7 @@ from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
 class MixedForwardMapL(EMA,L.LightningModule):
 
-    def __init__(self,config:CMBConfig,DatabatchNameTuple):
+    def __init__(self,config:CMBConfig):
         self.automatic_optimization = False
         EMA.__init__(self,config)
         L.LightningModule.__init__(self)
@@ -57,7 +58,7 @@ class MixedForwardMapL(EMA,L.LightningModule):
 
         self.define_deep_models(config)
         self.define_bridge_parameters(config)
-        self.DatabatchNameTuple = DatabatchNameTuple
+        self.DatabatchNameTuple = namedtuple("DatabatchClass", self.config.data.fields)
         self.init_ema()
 
     def define_deep_models(self,  config: CMBConfig):

@@ -15,7 +15,6 @@ from markov_bridges.data.abstract_dataloader import (
     MarkovBridgeDataset
 )
 
-
 class GaussiansDataloader(MarkovBridgeDataloader):
 
     """ Creates the dataloaders for N 2D Gaussians on the unit circle
