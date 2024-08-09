@@ -67,6 +67,7 @@ class CMBConfig:
     """
     # process config
     continuous_loss_type:str = "flow" # flow, regression, drift
+    brownian_sigma: float = 0.1
     # data
     data: LakhPianoRollConfig|IndependentMixConfig = IndependentMixConfig()
     # process 

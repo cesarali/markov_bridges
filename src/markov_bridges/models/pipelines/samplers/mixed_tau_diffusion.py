@@ -74,7 +74,8 @@ class TauDiffusion:
         self.num_steps = config.pipeline.number_of_steps
         self.num_intermediates = config.pipeline.num_intermediates
         self.max_rate_at_end = config.pipeline.max_rate_at_end
-
+        self.brownian_sigma = config.brownian_sigma
+        
         self.solver_type = config.pipeline.solver
         self.time_epsilon = config.pipeline.time_epsilon
         self.min_t = 1./self.num_steps
@@ -129,7 +130,7 @@ class TauDiffusion:
         #x = x_mean + diffusion[:, None, None, None] * np.sqrt(-dt) * z
         x_mean = state.continuous + drift*dt
         z = torch.randn_like(x_mean)
-        x = x_mean + np.sqrt(dt) * z
+        x = x_mean + self.brownian_sigma* np.sqrt(dt) * z
         return x
 
     def sample(self,
