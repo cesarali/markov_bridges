@@ -8,8 +8,8 @@ from markov_bridges.configs.config_classes.generative_models.cmb_config import C
 from markov_bridges.configs.config_classes.generative_models.cfm_config import CFMConfig
 
 class EMA():
-    def __init__(self, cfg:CJBConfig|CMBConfig|CFMConfig):
 
+    def __init__(self, cfg:CJBConfig|CMBConfig|CFMConfig):
         if hasattr(cfg,"temporal_network"):
             self.decay = cfg.temporal_network.ema_decay
         elif hasattr(cfg,"mixed_network"):
@@ -24,11 +24,9 @@ class EMA():
         self.num_updates = 0
 
     def init_ema(self):
-        self.shadow_params = [p.clone().detach()
-                            for p in self.parameters() if p.requires_grad]
+        self.shadow_params = [p.clone().detach()for p in self.parameters() if p.requires_grad]
 
     def update_ema(self):
-
         if len(self.shadow_params) == 0:
             raise ValueError("Shadow params not initialized before first ema update!")
 
@@ -47,7 +45,6 @@ class EMA():
         sd['ema_decay'] = self.decay
         sd['ema_num_updates'] = self.num_updates
         sd['ema_shadow_params'] = self.shadow_params
-
         return sd
 
     def move_shadow_params_to_model_params(self):

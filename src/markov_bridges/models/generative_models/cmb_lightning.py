@@ -38,15 +38,19 @@ from markov_bridges.models.pipelines.thermostats import Thermostat
 from markov_bridges.models.networks.temporal.mixed.mixed_networks_utils import load_mixed_network
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
-class MixedForwardMapL(L.LightningModule):
+class MixedForwardMapL(EMA,L.LightningModule):
 
     def __init__(self,config:CMBConfig,DatabatchNameTuple):
-        #EMA.__init__(self,config)
+        self.automatic_optimization = False
+        EMA.__init__(self,config)
         L.LightningModule.__init__(self)
 
         self.config = config
         self.do_ema = False
         self.lr = None
+
+        # Important: This property activates manual optimization.
+        self.automatic_optimization = False
 
         self.has_target_discrete = config.data.has_target_discrete 
         self.has_target_continuous = config.data.has_target_continuous 
@@ -54,7 +58,7 @@ class MixedForwardMapL(L.LightningModule):
         self.define_deep_models(config)
         self.define_bridge_parameters(config)
         self.DatabatchNameTuple = DatabatchNameTuple
-        #self.init_ema()
+        self.init_ema()
 
     def define_deep_models(self,  config: CMBConfig):
         self.mixed_network = load_mixed_network(config)
@@ -64,7 +68,6 @@ class MixedForwardMapL(L.LightningModule):
 
     def define_bridge_parameters(self,  config: CMBConfig):
         self.continuous_loss_type = config.continuous_loss_type
-
         self.discrete_bridge_: Thermostat = load_thermostat(config)
         self.continuous_bridge_ = None
     #====================================================================
@@ -251,10 +254,26 @@ class MixedForwardMapL(L.LightningModule):
     # TRAINING
     #============================================================================
     def training_step(self, batch, batch_idx):
+        optimizer = self.optimizers()
+        # obtain loss
         databatach = self.DatabatchNameTuple(*batch)
         discrete_sample, continuous_sample = self.sample_bridge(databatach)
         loss = self.loss(databatach, discrete_sample, continuous_sample)
+        # optimization
+        optimizer.zero_grad()
+        self.manual_backward(loss)
+        # clip grad norm
+        if self.config.trainer.clip_grad:
+            torch.nn.utils.clip_grad_norm_(self.parameters(), self.config.trainer.clip_max_norm)
+        optimizer.step()
+        # handle schedulers
+        sch = self.lr_schedulers()
+        self.handle_scheduler(sch,self.number_of_training_step,loss)
+        # ema
+        if self.do_ema:
+            self.update_ema()
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.number_of_training_step += 1
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -269,6 +288,7 @@ class MixedForwardMapL(L.LightningModule):
         Sets up the optimizer and learning rate scheduler for PyTorch Lightning.
         The optimizer setup here is consistent with the `initialize` method.
         """
+        self.number_of_training_step = 0
         if self.config.trainer.do_ema:
             self.do_ema = True
 
@@ -277,12 +297,16 @@ class MixedForwardMapL(L.LightningModule):
                          lr=self.config.trainer.learning_rate,
                          weight_decay=self.config.trainer.weight_decay)
         
-        #scheduler = self.define_scheduler(optimizer)
+        scheduler = self.define_scheduler(optimizer)
         self.lr = self.config.trainer.learning_rate
 
-        return optimizer
+        if scheduler is None:
+            return optimizer
+        else:
+            return [optimizer],[scheduler]
     
     def define_scheduler(self,optimizer):
+        scheduler = None
         # Check if a scheduler is defined in the configuration
         if self.config.trainer.scheduler is not None:
             if self.config.trainer.scheduler == "step":
@@ -306,3 +330,13 @@ class MixedForwardMapL(L.LightningModule):
                                               factor=self.config.trainer.factor, 
                                               patience=self.config.trainer.patience)
         return scheduler
+
+    def handle_scheduler(self,scheduler,number_of_training_step,loss_):
+        #after warm up call schedulers
+        if self.config.trainer.warm_up > 0:
+            if number_of_training_step > self.config.trainer.warm_up:
+                # Update the learning rate scheduler based on its type
+                if self.config.trainer.scheduler in ["step", "multi", "exponential"]:
+                    scheduler.step()
+                elif self.config.trainer.scheduler == "reduce":
+                    scheduler.step(loss_)
