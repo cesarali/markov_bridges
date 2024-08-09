@@ -1,14 +1,13 @@
 import torch
 from torch import nn
 from torch.nn.functional import softmax
-import torch.nn.functional as F
-from functools import reduce
-from typing import Union,Tuple,List
+from typing import Union
 from torch.distributions import Categorical
 
 from markov_bridges.models.networks.utils.ema import EMA
+
 from markov_bridges.models.pipelines.thermostats import ConstantThermostat
-from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig, TemporalNetworkToRateConfig
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
 from markov_bridges.utils.numerics.integration import integrate_quad_tensor_vec
 from markov_bridges.models.pipelines.thermostat_utils import load_thermostat
@@ -20,144 +19,8 @@ def flip_rates(conditional_model,x_0,time):
     flip_rate = torch.gather(conditional_rate, 2, not_x_0.unsqueeze(2)).squeeze()
     return flip_rate
 
-class TemporalToRateLinear(nn.Module):
-    """
-    Assigns a linear Layer
-    """
-    def __init__(self, config:CJBConfig, temporal_output_total,device):
-        nn.Module.__init__(self)
-        self.vocab_size = config.data.vocab_size
-        self.dimensions = config.data.discrete_dimensions
-        self.temporal_output_total = temporal_output_total
-        self.device = device
-
-        if isinstance(config.temporal_network_to_rate,TemporalNetworkToRateConfig):
-            intermediate_to_rate = config.temporal_network_to_rate.linear_reduction
-        else:
-            intermediate_to_rate = config.temporal_network_to_rate
-        
-        if intermediate_to_rate is None:
-            self.temporal_to_rate = nn.Linear(temporal_output_total,self.dimensions*self.vocab_size)
-        else:
-
-            if isinstance(intermediate_to_rate,float):
-                assert intermediate_to_rate < 1.
-                intermediate_to_rate = int(self.dimensions * self.vocab_size * intermediate_to_rate)
-            self.temporal_to_rate = nn.Sequential(
-                nn.Linear(temporal_output_total, intermediate_to_rate),
-                nn.Linear(intermediate_to_rate, self.dimensions * self.vocab_size)
-            )
-
-    def forward(self,x):
-        return self.temporal_to_rate(x)
-
-class TemporalToRateBernoulli(nn.Module):
-    """
-    Takes the output of the temporal rate as bernoulli probabilities completing 
-    with 1 - p
-    """
-    def __init__(self, config:CJBConfig, temporal_output_total,device):
-        nn.Module.__init__(self)
-        self.device = device
-
-    def forward(self,x):
-        #here we expect len(x.shape) == 2
-        x_ = torch.zeros_like(x)
-        x = torch.cat([x[:,:,None],x_[:,:,None]],dim=2)
-        return x
-
-class TemporalToRateEmpty(nn.Module):
-    """
-    Directly Takes the Output and converts into a rate
-    """
-    def __init__(self,  config:CJBConfig,temporal_output_total,device):
-        nn.Module.__init__(self)
-        self.device = device
-
-    def forward(self,x):
-        return x
-
-class TemporalToRateLogistic(nn.Module):
-    """
-    # Truncated logistic output from https://arxiv.org/pdf/2107.03006.pdf
-    """
-    def __init__(self, config:CJBConfig,temporal_output_total,device):
-        nn.Module.__init__(self)
-        self.D = config.data.discrete_dimensions
-        self.S = config.data.vocab_size
-        self.device = device
-        self.fix_logistic = config.temporal_network_to_rate.fix_logistic
-        
-    def forward(self,net_out):
-        B = net_out.shape[0]
-        D = self.D
-        C = 3
-        S = self.S
-        net_out = net_out.view(B,2*C,32,32)
-        
-        mu = net_out[:, 0:C, :, :].unsqueeze(-1)
-        log_scale = net_out[:, C:, :, :].unsqueeze(-1)
-
-        inv_scale = torch.exp(- (log_scale - 2))
-
-        bin_width = 2. / self.S
-        bin_centers = torch.linspace(start=-1. + bin_width/2,
-            end=1. - bin_width/2,
-            steps=self.S,
-            device=self.device).view(1, 1, 1, 1, self.S)
-
-        sig_in_left = (bin_centers - bin_width/2 - mu) * inv_scale
-        bin_left_logcdf = F.logsigmoid(sig_in_left)
-        sig_in_right = (bin_centers + bin_width/2 - mu) * inv_scale
-        bin_right_logcdf = F.logsigmoid(sig_in_right)
-
-        logits_1 = self._log_minus_exp(bin_right_logcdf, bin_left_logcdf)
-        logits_2 = self._log_minus_exp(-sig_in_left + bin_left_logcdf, -sig_in_right + bin_right_logcdf)
-        if self.fix_logistic:
-            logits = torch.min(logits_1, logits_2)
-        else:
-            logits = logits_1
-        logits = logits.view(B,D,S)
-
-        return logits
-    
-    def _log_minus_exp(self, a, b, eps=1e-6):
-        """ 
-            Compute log (exp(a) - exp(b)) for (b<a)
-            From https://arxiv.org/pdf/2107.03006.pdf
-        """
-        return a + torch.log1p(-torch.exp(b-a) + eps)
-
-def select_temporal_to_rate(config:CJBConfig, expected_temporal_output_shape,device=torch.device("cpu")):
-
-    temporal_output_total = reduce(lambda x, y: x * y,expected_temporal_output_shape)
-    temporal_network_to_rate = config.temporal_network_to_rate
-
-    if isinstance(temporal_network_to_rate,TemporalNetworkToRateConfig):
-        type_of = temporal_network_to_rate.type_of 
-        if type_of == "bernoulli":
-             temporal_to_rate = TemporalToRateBernoulli(config,temporal_output_total,device)
-        elif type_of == "empty":
-            temporal_to_rate = TemporalToRateEmpty(config,temporal_output_total,device)
-        elif type_of == "linear":
-            temporal_to_rate = TemporalToRateLinear(config,temporal_output_total,device)
-        elif type_of == "logistic":
-            temporal_to_rate = TemporalToRateLogistic(config,temporal_output_total,device)
-        elif type_of is None:
-            config.temporal_network_to_rate.linear_reduction = None
-            temporal_to_rate = TemporalToRateLinear(config,temporal_output_total,device)
-    else:
-        temporal_to_rate = TemporalToRateLinear(config,temporal_output_total,device)
-
-    temporal_to_rate.device = device
-    temporal_to_rate = temporal_to_rate.to(device)
-
-    return temporal_to_rate
-
 class ClassificationForwardRate(EMA,nn.Module):
     
-    temporal_to_rate:Union[TemporalToRateLinear,TemporalToRateBernoulli,TemporalToRateEmpty]
-
     def __init__(self, config:CJBConfig, device):
         EMA.__init__(self,config)
         nn.Module.__init__(self)
@@ -167,7 +30,6 @@ class ClassificationForwardRate(EMA,nn.Module):
 
         self.vocab_size = config_data.vocab_size
         self.dimensions = config_data.discrete_dimensions
-        self.expected_data_shape = config_data.temporal_net_expected_shape
         self.temporal_network_to_rate = config.temporal_network_to_rate
 
         self.define_deep_models(config,device)
@@ -177,9 +39,6 @@ class ClassificationForwardRate(EMA,nn.Module):
 
     def define_deep_models(self,config,device):
         self.temporal_network = load_temporal_network(config,device=device)
-        self.expected_temporal_output_shape = self.temporal_network.expected_output_shape
-        if self.expected_temporal_output_shape != [self.dimensions,self.vocab_size]:
-            self.temporal_to_rate = select_temporal_to_rate(config,self.expected_temporal_output_shape,device=device)
 
     def define_thermostat(self,config):
         self.thermostat = load_thermostat(config)
@@ -289,6 +148,8 @@ class ClassificationForwardRate(EMA,nn.Module):
         return rate_transition
 
     def sample_x(self, x_1, x_0, time):
+        if len(time.shape) > 1:
+            time = time.flatten()
         device = x_1.device
         x_to_go = self.where_to_go_x(x_0)
         transition_probs = self.telegram_bridge_probability(x_to_go, x_1, x_0, time)
@@ -337,87 +198,3 @@ class ClassificationForwardRate(EMA,nn.Module):
         cost = (x1 == x0).sum(axis=1).reshape(batch_size,batch_size).float()
         return -cost
     
-    #======================================================================
-    # VARIANCE
-    #======================================================================
-    def compute_first_moment(self,t,x1,x0):
-        right_time_size = lambda t: t if isinstance(t, torch.Tensor) else torch.full((x0.size(0),), t).to(x0.device)
-
-        t = right_time_size(t).to(x0.device)
-        t1 = right_time_size(1.).to(x0.device)
-        t0 = right_time_size(0.).to(x0.device)
-
-        i = x1
-        j = x0
-
-        S = self.vocab_size
-        integral_t0 = self.beta_integral(t, t0)
-        integral_1t = self.beta_integral(t1, t)
-        integral_10 = self.beta_integral(t1, t0)
-
-        w_t0 = torch.exp(-S * integral_t0)[:,None,None]
-        w_1t = torch.exp(-S * integral_1t)[:,None,None]
-        w_10 = torch.exp(-S * integral_10)[:,None,None]
-        # Kronecker delta in PyTorch
-        kronecker_delta_ij = (i == j).float()[:,:,None]
-        i = i[:,:,None]
-        j = j[:,:,None]
-
-        # Precompute common terms to simplify the expression
-        term_S1 = S + 1  # Term involving S
-        part1 = w_10 * (S * kronecker_delta_ij - 1) + 1
-        part2 = S * w_10 * kronecker_delta_ij - w_10 + 1
-
-        # Calculate each term of the first moment expression
-        term1 = part1 * (S + w_1t * w_t0 * term_S1 - w_1t * term_S1 - w_t0 * term_S1 + 1) / 2
-        term2 = part2 * (
-                    S * i * w_1t * w_t0 * kronecker_delta_ij - i * w_1t * w_t0 + i * w_1t - j * w_1t * w_t0 + j * w_t0)
-
-        # Combine terms to compute the first moment
-        first_moment = (term1 + term2) / (part1 * part2)
-        return first_moment
-
-    def compute_second_moment(self,t,x1,x0):
-        right_time_size = lambda t: t if isinstance(t, torch.Tensor) else torch.full((x0.size(0),), t).to(x0.device)
-
-        t = right_time_size(t).to(x0.device)
-        t1 = right_time_size(1.).to(x0.device)
-        t0 = right_time_size(0.).to(x0.device)
-
-        i = x1
-        j = x0
-
-        S = self.vocab_size
-        integral_t0 = self.beta_integral(t, t0)
-        integral_1t = self.beta_integral(t1, t)
-        integral_10 = self.beta_integral(t1, t0)
-
-        w_t0 = torch.exp(-S * integral_t0)[:,None,None]
-        w_1t = torch.exp(-S * integral_1t)[:,None,None]
-        w_10 = torch.exp(-S * integral_10)[:,None,None]
-        # Kronecker delta in PyTorch
-        kronecker_delta_ij = (i == j).float()[:,:,None]
-        i = i[:,:,None]
-        j = j[:,:,None]
-
-        # Precompute common terms to simplify the expression
-        term_S0 = 2 * S ** 2 + 3 * S + 1  # Term involving S
-        part1 = w_10 * (S * kronecker_delta_ij - 1) + 1
-        part2 = S * w_10 * kronecker_delta_ij - w_10 + 1
-
-        # Calculate each term of the second moment expression
-        term1 = part1 * (term_S0 + w_1t * w_t0 * term_S0 - w_1t * term_S0 - w_t0 * term_S0 + 1) / 6
-        term2 = part2 * (
-                    S * i ** 2 * w_1t * w_t0 * kronecker_delta_ij - i ** 2 * w_1t * w_t0 + i ** 2 * w_1t - j ** 2 * w_1t * w_t0 + j ** 2 * w_t0)
-
-        # Combine terms to compute the second moment
-        second_moment = (term1 + term2) / (part1 * part2)
-        return second_moment
-
-    def compute_variance_torch(self,t,x1,x0):
-
-        mean = self.compute_first_moment(t,x1,x0)
-        second_moment = self.compute_second_moment(t,x1,x0)
-
-        return second_moment - mean**2
-

@@ -15,7 +15,7 @@ from markov_bridges.models.networks.temporal.temporal_mlp import (
 
 from markov_bridges.models.networks.temporal.temporal_transformers import SequenceTransformer
 
-def load_temporal_network(config:CJBConfig, device):
+def load_temporal_network(config:CJBConfig, device=None):
     if isinstance(config.temporal_network,TemporalMLPConfig):
         temporal_network = TemporalMLP(config,device)
     elif isinstance(config.temporal_network,TemporalDeepMLPConfig):

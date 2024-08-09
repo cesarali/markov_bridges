@@ -234,11 +234,10 @@ class IndependentMixDataloader(MarkovBridgeDataloader):
 
         self.fields = test_data.fields
         self.DatabatchNameTuple = namedtuple("DatabatchClass", self.fields)
+        self.data_config.fields = self.fields
 
         self.train_dataloader = DataLoader(train_data, batch_size=self.data_config.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_data,batch_size=self.data_config.batch_size, shuffle=True)
-
-        self.data_config.fields = self.fields
 
     def join_context(self,databatch:MarkovBridgeDataNameTuple,discrete_data=None,continuous_data=None):
         if self.has_context_continuous:

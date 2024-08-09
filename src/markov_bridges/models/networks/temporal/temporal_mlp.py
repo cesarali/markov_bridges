@@ -33,7 +33,8 @@ class TemporalDeepMLP(nn.Module):
         self.vocab_size = config.data.vocab_size
         self.define_deep_models(config)
         self.init_weights()
-        self.to(device)
+        if device is not None:
+            self.to(device)
         self.expected_output_shape = [self.dimensions, self.vocab_size]
 
     def define_deep_models(self, config):
@@ -83,7 +84,8 @@ class TemporalMLP(nn.Module):
         self.vocab_size = config_data.vocab_size
         self.define_deep_models(config)
         self.init_weights()
-        self.to(device)
+        if device is not None:
+            self.to(device)
         self.expected_output_shape = [self.dimensions,self.vocab_size]
 
     def define_deep_models(self,config):

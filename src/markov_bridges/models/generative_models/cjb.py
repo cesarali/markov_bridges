@@ -9,6 +9,7 @@ from dataclasses import asdict
 
 import numpy as np
 from torch.nn.functional import softmax
+from markov_bridges.models.metrics.optimal_transport import uniform_pair_x0_x1
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
 from markov_bridges.data.dataloaders_utils import get_dataloaders
@@ -20,7 +21,6 @@ from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
 from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
-from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
 @dataclass
 class CJB:
@@ -161,31 +161,3 @@ class CJB:
 
         return x1,x0
 
-def uniform_pair_x0_x1(databatch:MarkovBridgeDataNameTuple):
-    """
-    Most simple Z sampler
-
-    :param batch_1:
-    :param batch_0:
-
-    :return:x_1, x_0
-    """
-    x_0 = databatch.source_discrete
-    x_1 =  databatch.target_discrete
-
-    batch_size_0 = x_0.size(0)
-    batch_size_1 = x_1.size(0)
-
-    batch_size = min(batch_size_0, batch_size_1)
-
-    x_0 = x_0[:batch_size]
-    x_1 = x_1[:batch_size]
-
-    x_1 = x_1.float()
-    x_0 = x_0.float()
-    
-    batch_size = x_0.shape[0]
-    x_0 = x_0.reshape(batch_size,-1)
-    x_1 = x_1.reshape(batch_size,-1)
-
-    return x_1, x_0

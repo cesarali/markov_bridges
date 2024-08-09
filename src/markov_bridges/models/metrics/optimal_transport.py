@@ -7,6 +7,8 @@ import numpy as np
 import ot as pot
 import torch
 
+from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
+
 class OTPlanSampler:
     """OTPlanSampler implements sampling coordinates according to an OT plan (wrt squared Euclidean
     cost) with different implementations of the plan calculation."""
@@ -270,3 +272,33 @@ def wasserstein(
     if power == 2:
         ret = math.sqrt(ret)
     return ret
+
+
+def uniform_pair_x0_x1(databatch:MarkovBridgeDataNameTuple):
+    """
+    Most simple Z sampler
+
+    :param batch_1:
+    :param batch_0:
+
+    :return:x_1, x_0
+    """
+    x_0 = databatch.source_discrete
+    x_1 =  databatch.target_discrete
+
+    batch_size_0 = x_0.size(0)
+    batch_size_1 = x_1.size(0)
+
+    batch_size = min(batch_size_0, batch_size_1)
+
+    x_0 = x_0[:batch_size]
+    x_1 = x_1[:batch_size]
+
+    x_1 = x_1.float()
+    x_0 = x_0.float()
+
+    batch_size = x_0.shape[0]
+    x_0 = x_0.reshape(batch_size,-1)
+    x_1 = x_1.reshape(batch_size,-1)
+
+    return x_1, x_0

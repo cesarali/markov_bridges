@@ -5,6 +5,7 @@ from torch.distributions import Categorical
 from torch.utils.data import TensorDataset,DataLoader
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
 from markov_bridges.configs.config_classes.data.basics_configs import MarkovBridgeDataConfig
+from collections import namedtuple
 
 from markov_bridges.data.abstract_dataloader import (
     MarkovBridgeDataloader,
@@ -37,6 +38,10 @@ class LankhPianoRollDataloader(MarkovBridgeDataloader):
 
         test_data = self.get_data_divisions(test_data,self.music_config)
         test_data = MarkovBridgeDataset(test_data)
+
+        self.fields = test_data.fields
+        self.DatabatchNameTuple = namedtuple("DatabatchClass", self.fields)
+        self.music_config.fields = self.fields
 
         self.descramble_key = descramble_key
 

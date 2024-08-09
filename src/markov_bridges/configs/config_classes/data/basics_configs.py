@@ -32,6 +32,8 @@ class MarkovBridgeDataConfig:
     max_training_size: int = None
     max_test_size:int = None
 
+    fields:list = field(default_factory=lambda:[])
+
     def __post_init__(self):
         self.discrete_generation_dimension = self.discrete_dimensions - self.context_discrete_dimension
         self.continuous_generation_dimension = self.continuos_dimensions - self.context_continuous_dimension
@@ -64,7 +66,6 @@ class IndependentMixConfig(MarkovBridgeDataConfig):
     test_data_size: int = 1500
 
     batch_size:int = 64
-    fields:list = field(default_factory=lambda:[])
 
     def __post_init__(self):
         if self.has_context_continuous:

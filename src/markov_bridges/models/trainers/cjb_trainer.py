@@ -134,12 +134,8 @@ class CJBTrainer(Trainer):
         # data pair and time sample
         target_discrete, source_discrete = self.generative_model.sample_pair(databatch,self.device)
 
-        # time selection
-        batch_size = source_discrete.size(0)
-        time = torch.rand(batch_size).to(self.device)
-
         # sample x from z
-        sampled_x = self.generative_model.forward_rate.sample_x(target_discrete, source_discrete, time).float()
+        sampled_x = self.generative_model.forward_rate.sample_x(target_discrete, source_discrete, databatch.time).float()
         databatch = nametuple_to_device(databatch, self.device)
         databatch.time
         # loss

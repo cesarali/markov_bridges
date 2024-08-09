@@ -206,22 +206,15 @@ class SequenceTransformer(nn.Module):
             num_layers, d_model, num_heads, dim_feedforward, dropout,
             num_output_FFresiduals, time_scale_factor, self.S, max_len,
             temb_dim, use_one_hot_input, device
-        ).to(device)
+        )
+        if device is not None:
+            tmp_net = tmp_net.to(device)
 
-        #if cfg.distributed:
-        #    self.net = DDP(tmp_net, device_ids=[rank])
-        #else:
         self.net = tmp_net
         self.expected_output_shape = [max_len, self.S]
         self.has_context_discrete = cfg.data.has_context_discrete
-
-        #if self.has_context_discrete:
-        #    self.join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
-        #else:
-        #    self.join_context = lambda context_discrete,data_discrete : data_discrete
-        
-
-        self.to(device)
+        if device is not None:
+            self.to(device)
 
     def forward(self,
         x: TensorType["B", "D"],
@@ -239,20 +232,3 @@ class SequenceTransformer(nn.Module):
             logits = logits[:,self.context_discrete_dimension:,:]
         return logits
     
-    """
-        # loss
-        if self.config.data.has_context_discrete:
-            completed_sampled_x = join_context(databatch.context_discrete,sampled_x)
-            model_classification = self.generative_model.forward_rate.classify(completed_sampled_x, time)
-            model_classification_ = model_classification[:, self.config.data.context_discrete_dimension:,:]
-            # reshape for cross logits
-            model_classification_ = model_classification_.reshape(-1, self.config.data.vocab_size)
-            target_discrete_ = databatch.target_discrete .reshape(-1)
-
-            loss = self.generative_model.loss(model_classification_, target_discrete_.long())
-        else:
-            model_classification = self.generative_model.forward_rate.classify(sampled_x, time)
-            model_classification_ = model_classification.view(-1, self.config.data.vocab_size)
-            target_discrete_ = databatch.target_discrete .reshape(-1)
-            loss = self.generative_model.loss(model_classification_,target_discrete_.long())
-    """

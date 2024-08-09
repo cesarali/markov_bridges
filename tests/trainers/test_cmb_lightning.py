@@ -1,8 +1,4 @@
-import os
-import torch
 import lightning as L
-
-from markov_bridges.models.generative_models.cmb import CMB
 from markov_bridges.utils.experiment_files import ExperimentFiles
 from markov_bridges.models.generative_models.cmb_lightning import MixedForwardMapL
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
@@ -28,7 +24,7 @@ if __name__=="__main__":
                                         delete=True)
         experiment_files.create_directories(model_config)
         dataloaders = get_dataloaders(model_config)
-        mixed_model = MixedForwardMapL(model_config,dataloaders.DatabatchNameTuple)
+        mixed_model = MixedForwardMapL(model_config)
         # saves checkpoints to 'some/path/' at every epoch end
         trainer = L.Trainer(default_root_dir=experiment_files.experiment_dir,
                             max_epochs=model_config.trainer.number_of_epochs)

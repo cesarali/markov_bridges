@@ -12,10 +12,13 @@ from typing import List
 from dataclasses import dataclass,field
 from collections import namedtuple
 
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.optim.lr_scheduler import ExponentialLR
-from torch.optim.lr_scheduler import MultiStepLR
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import(
+    ReduceLROnPlateau,
+    ExponentialLR,
+    MultiStepLR,
+    StepLR
+)
+                                    
 from torch.nn.functional import softmax
 
 
@@ -45,13 +48,13 @@ class MixedForwardMapL(EMA,L.LightningModule):
         self.automatic_optimization = False
         EMA.__init__(self,config)
         L.LightningModule.__init__(self)
+        self.save_hyperparameters()
+        # Important: This property activates manual optimization.
+        self.automatic_optimization = False
 
         self.config = config
         self.do_ema = False
         self.lr = None
-
-        # Important: This property activates manual optimization.
-        self.automatic_optimization = False
 
         self.has_target_discrete = config.data.has_target_discrete 
         self.has_target_continuous = config.data.has_target_continuous 
@@ -63,7 +66,6 @@ class MixedForwardMapL(EMA,L.LightningModule):
 
     def define_deep_models(self,  config: CMBConfig):
         self.mixed_network = load_mixed_network(config)
-
         self.discrete_loss_nn = nn.CrossEntropyLoss(reduction='none')
         self.continuous_loss_nn = nn.MSELoss(reduction='none')
 
