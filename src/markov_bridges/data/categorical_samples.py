@@ -231,7 +231,9 @@ class IndependentMixDataloader(MarkovBridgeDataloader):
         test_data = self.get_data_divisions(type="test")
         test_data = MarkovBridgeDataset(test_data)
 
+        self.DatabatchNameTuple = test_data.DatabatchNameTuple
         self.fields = test_data.fields
+        
         self.train_dataloader = DataLoader(train_data, batch_size=self.data_config.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_data,batch_size=self.data_config.batch_size, shuffle=True)
 

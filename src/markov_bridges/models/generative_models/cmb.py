@@ -138,7 +138,7 @@ class CMB:
     
     def start_new_experiment(self):
         #create directories
-        self.experiment_files.create_directories()
+        self.experiment_files.create_directories(self.config)
 
         #align configs
         self.align_configs()

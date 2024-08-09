@@ -72,7 +72,7 @@ class ExperimentFiles:
         self.metrics_file = os.path.join(self.experiment_dir, "metrics_{0}.json")
         self.plot_path = os.path.join(self.experiment_dir, "plot_{0}.png")
 
-    def create_directories(self):
+    def create_directories(self,config=None):
         if not Path(self.experiment_dir).exists():
             os.makedirs(self.experiment_dir)
         else:
@@ -88,7 +88,12 @@ class ExperimentFiles:
 
         if not os.path.isdir(self.tensorboard_path):
             os.makedirs(self.tensorboard_path)
-
+        
+        if config is not None:
+            config_as_dict = asdict(config)
+            with open(self.config_path, "w") as file:
+                json.dump(config_as_dict, file, indent=4)
+    
     #========================================================================================
     # READ FROM FILES
     #========================================================================================

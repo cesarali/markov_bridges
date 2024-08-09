@@ -23,7 +23,7 @@ import math
 
 class MixedDeepMLP(nn.Module):
 
-    def __init__(self, config:CMBConfig, device):
+    def __init__(self, config:CMBConfig, device=None):
         super().__init__()
 
         self.config = config
@@ -31,7 +31,9 @@ class MixedDeepMLP(nn.Module):
         self.set_dimensions(config)
         self.define_deep_models(config)
         self.init_weights()
-        self.to(device)
+        
+        if device is None:
+            self.to(device)
 
     def set_dimensions(self,config:CMBConfig):
         self.has_target_continuous = config.data.has_target_continuous

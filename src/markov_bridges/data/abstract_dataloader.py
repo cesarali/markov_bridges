@@ -71,7 +71,7 @@ class MarkovBridgeDataset(Dataset):
             self.num_samples = data.target_continuous.size(0)
         self.data = data
         self.DatabatchNameTuple,self.fields = create_databatch_nametuple(data)
-
+        
     def __len__(self):
         return self.num_samples
 
