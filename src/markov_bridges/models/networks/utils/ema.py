@@ -61,7 +61,7 @@ class EMA():
             param.data.copy_(c_param.data)
 
     def load_state_dict(self, state_dict, strict=False):
-        missing_keys, unexpected_keys = nn.Module.load_state_dict(self, state_dict, strict=strict)
+        missing_keys, unexpected_keys = nn.Module.load_state_dict(self, state_dict, strict=False)
 
         # print("state dict keys")
         # for key in state_dict.keys():

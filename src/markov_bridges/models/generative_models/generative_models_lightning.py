@@ -1,4 +1,5 @@
 import torch
+import json
 import lightning as L
 from abc import ABC, abstractmethod
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -19,29 +20,40 @@ class AbstractGenerativeModelL(ABC):
     model:L.LightningModule=None
     dataloader:MarkovBridgeDataloader=None
     pipeline:AbstractPipeline=None
-
-    def __init__(self,config,experiment_files=None,experiment_dir=None,checkpoint_path=None):
+    def __init__(
+            self,
+            config:CFMConfig|CJBConfig|CMBConfig|EDMGConfig=None,
+            experiment_files:ExperimentFiles=None,
+            experiment_source:str|ExperimentFiles=None,
+            checkpoint_type:str="best"
+        ):
         """
         """
-        if self.experiment_files is not None:
+        
+        if experiment_files is not None:
             self.experiment_files = experiment_files
-        else:
-            self.experiment_files = ExperimentFiles(experiment_name="generative_model",
-                                                    experiment_type="dummy",
-                                                    experiment_indentifier="dummy",
-                                                    delete=True)
+        elif config is not None:
+            self.experiment_files = ExperimentFiles(experiment_name="generative_model",experiment_type="dummy",experiment_indentifier="dummy",delete=True)
+            
         if config is not None:
             self.define_from_config(config)
             self.experiment_files.create_directories(config)
-        elif experiment_dir is not None:
-            self.define_from_dir(experiment_dir,checkpoint_path)
-        
+        elif experiment_source is not None:
+            self.define_from_dir(experiment_source,checkpoint_type)
+
+    @abstractmethod
+    def read_config(self,experiment_files:ExperimentFiles):
+        config_json = json.load(open(experiment_files.config_path, "r"))
+        if hasattr(config_json,"delete"):
+            config_json["delete"] = False
+        return config_json
+    
     @abstractmethod
     def define_from_config(self,config):
         pass
     
     @abstractmethod
-    def define_from_dir(self,experiment_dir=None,checkpoint_dir=None):
+    def define_from_dir(self,experiment_dir=None,checkpoint_type:str="best"):
         pass
 
     #================================
@@ -52,12 +64,19 @@ class AbstractGenerativeModelL(ABC):
         pass
 
     def get_trainer(self):
-        checkpoint_callback = ModelCheckpoint(dirpath=self.experiment_files.experiment_dir, 
-                                              save_top_k=2, 
-                                              monitor="val_loss")
+        checkpoint_callback_best = ModelCheckpoint(dirpath=self.experiment_files.experiment_dir, 
+                                                   save_top_k=1, 
+                                                   monitor="val_loss",
+                                                   filename="best-{epoch:02d}")
+        
+        checkpoint_callback_last = ModelCheckpoint(dirpath=self.experiment_files.experiment_dir,
+                                                   monitor="train_loss",
+                                                   filename="last-{epoch:02d}")
+
         trainer = L.Trainer(default_root_dir=self.experiment_files.experiment_dir,
                             max_epochs=self.config.trainer.number_of_epochs,
-                            callbacks=[checkpoint_callback])
+                            callbacks=[checkpoint_callback_best,
+                                       checkpoint_callback_last])
         
         return trainer
     

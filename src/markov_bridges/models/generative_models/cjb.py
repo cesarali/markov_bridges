@@ -19,27 +19,8 @@ from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
 from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
 from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
-from markov_bridges.models.generative_models.cjb_lightning import ClassificationForwardRateL
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
-from markov_bridges.models.generative_models.generative_models_lightning import AbstractGenerativeModelL
-from markov_bridges.models.metrics.metrics_utils import LogMetrics
 
-class CJBL(AbstractGenerativeModelL):
-
-    def define_from_config(self,config:CJBConfig):
-        self.config = config
-        self.dataloader = get_dataloaders(self.config)
-        self.model = ClassificationForwardRateL(self.config)
-        self.pipeline = CJBPipeline(self.config,self.model,self.dataloader)
-        self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
-    
-    def define_from_dir(self,experiment_dir=None,checkpoint_dir=None):
-        pass
-
-    def test_evaluation(self) -> dict:
-        all_metrics = self.log_metrics(self,"best")
-        return all_metrics
-    
 @dataclass
 class CJB:
     """

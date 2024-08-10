@@ -6,11 +6,15 @@ from typing import Union
 from torch.distributions import Categorical
 import lightning as L
 from dataclasses import asdict
+from markov_bridges.data.dataloaders_utils import get_dataloaders
+from markov_bridges.models.generative_models.generative_models_lightning import AbstractGenerativeModelL
+from markov_bridges.models.metrics.metrics_utils import LogMetrics
 from markov_bridges.models.metrics.optimal_transport import uniform_pair_x0_x1
 
 from markov_bridges.models.networks.utils.ema import EMA
 from torch.optim import Adam
 
+from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
 from markov_bridges.models.pipelines.thermostats import ConstantThermostat
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
@@ -35,6 +39,11 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
     def __init__(self, config:CJBConfig):
         EMA.__init__(self,config)
         L.LightningModule.__init__(self)
+        self.define_deep_models(config)
+        self.define_ot(config)
+        self.define_thermostat(config)
+        self.init_ema()
+
         self.save_hyperparameters()
         # Important: This property activates manual optimization.
         self.automatic_optimization = False
@@ -47,10 +56,8 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
         self.temporal_network_to_rate = config.temporal_network_to_rate
         self.DatabatchNameTuple = namedtuple("DatabatchClass", self.config.data.fields)
 
-        self.define_deep_models(config)
-        self.define_ot(config)
-        self.define_thermostat(config)
-        self.init_ema()
+
+
 
     def define_deep_models(self,config):
         self.nn_loss = nn.CrossEntropyLoss(reduction='none')
@@ -268,6 +275,7 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
         # clip grad norm
         if self.config.trainer.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.parameters(), self.config.trainer.clip_max_norm)
+        # cambell scheduler
         if self.config.trainer.warm_up > 0:
             for g in optimizer.param_groups:
                 new_lr = self.lr * np.minimum(float(self.number_of_training_step+1) / self.config.trainer.warm_up, 1.0)
@@ -338,53 +346,41 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
                                               factor=self.config.trainer.factor, 
                                               patience=self.config.trainer.patience)
         return scheduler
+
+class CJBL(AbstractGenerativeModelL):
+
+    def define_from_config(self,config:CJBConfig):
+        self.config = config
+        self.dataloader = get_dataloaders(self.config)
+        self.model = ClassificationForwardRateL(self.config)
+        self.pipeline = CJBPipeline(self.config,self.model,self.dataloader)
+        self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
+
+    def read_config(self,experiment_files):
+        config_json = super().read_config(experiment_files)
+        config = CJBConfig(**config_json)   
+        return config
+     
+    def define_from_dir(self, experiment_dir:str|ExperimentFiles=None, checkpoint_type: str = "best"):
+        if isinstance(experiment_dir,str):
+            self.experiment_files = ExperimentFiles(experiment_dir=experiment_dir)
+        else:
+            self.experiment_files = experiment_dir
+
+        self.config = self.read_config(self.experiment_files)
+        self.dataloader = get_dataloaders(self.config)
+
+        CKPT_PATH = self.experiment_files.get_lightning_checkpoint_path(checkpoint_type)
+        print(CKPT_PATH)
+
+        self.model = ClassificationForwardRateL.load_from_checkpoint(CKPT_PATH, config=self.config)
+        self.model = None
+        self.pipeline = None
+        self.log_metrics = None
+
+        return self.config
+
+    def test_evaluation(self) -> dict:
+        all_metrics = self.log_metrics(self,"best")
+        return all_metrics
     
-import json
-import torch
-from torch import nn
-from torch.utils.data import DataLoader
-
-from typing import Union
-from dataclasses import asdict
-
-import numpy as np
-from torch.nn.functional import softmax
-from markov_bridges.utils.experiment_files import ExperimentFiles
-
-from markov_bridges.data.dataloaders_utils import get_dataloaders
-from markov_bridges.data.graphs_dataloader import GraphDataloader
-from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
-from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
-from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
-from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
-from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
-from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
-
-from dataclasses import dataclass
-
-
-@dataclass
-class CJBL:
-    """
-    This class contains all elements to sample and train a conditional jump bridge model
-    
-    if DEVICE is not provided it is obtained from the trainer config 
-
-    the actual torch model that contains the networks for sampling is specified in forward rate
-    and contains all the mathematical elements.
-
-    the experiment folder is created in experiment files and has to be provided by hand, 
-    currently it is passed to the model by the trainer, it is only needed during training
-    """
-    config: CJBConfig = None
-    experiment_dir:str = None
-
-    experiment_files: ExperimentFiles = None
-    dataloader: Union[MarkovBridgeDataloader|GraphDataloader|LankhPianoRollDataloader] = None
-    forward_rate: Union[ClassificationForwardRate] = None
-    pipeline:CJBPipeline = None
-    type_of_load:Union[str,int] = "best"
-
-
-
-

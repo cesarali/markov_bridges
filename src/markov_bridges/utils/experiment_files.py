@@ -67,6 +67,8 @@ class ExperimentFiles:
         self.current_git_commit = str(get_git_revisions_hash()[0])
         self.config_path = os.path.join(self.experiment_dir,"config.json")
         self.best_model_path_checkpoint = os.path.join(self.experiment_dir, "model_checkpoint_{0}.tr")
+        self.lightning_checkpoint = os.path.join(self.experiment_dir, "*.ckpt")
+
         self.best_model_path = os.path.join(self.experiment_dir, "best_model.tr")
         self.last_model = os.path.join(self.experiment_dir, "last_model.tr")
         self.metrics_file = os.path.join(self.experiment_dir, "metrics_{0}.json")
@@ -94,9 +96,27 @@ class ExperimentFiles:
             with open(self.config_path, "w") as file:
                 json.dump(config_as_dict, file, indent=4)
     
-    #========================================================================================
+    def get_lightning_checkpoint_path(self,checkpoint_type:str="best"):
+        """
+        Checks for lightning checkpoints in experiment folders and returns 
+        checkpoint type
+        """
+        generic_metric_path_ = Path(self.lightning_checkpoint)
+        all_checkpoints = list(generic_metric_path_.parent.glob(generic_metric_path_.name))
+
+        if len(all_checkpoints) == 0:
+            raise Exception("No Model Found!")
+        
+        for checkpoint_path in all_checkpoints:
+            if checkpoint_type in checkpoint_path.name:
+                return checkpoint_path
+        print("CHECKPOINT TYPE {0} NOT FOUND, RETURNING".format(checkpoint_type))
+        print(all_checkpoints[0].name)
+        return all_checkpoints[0]
+    
+    #======================================================================================
     # READ FROM FILES
-    #========================================================================================
+    #======================================================================================
     def load_metric(self, metric_string_identifier, checkpoint=None, last_model=True):
         def obtain_number (x):
             if x.name.split("_")[-1].split(".")[0].isdigit():

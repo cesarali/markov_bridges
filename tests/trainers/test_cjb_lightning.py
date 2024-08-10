@@ -1,8 +1,10 @@
 import json
 import torch
+from pprint import pprint
+from dataclasses import asdict
 import lightning as L
 from markov_bridges.data.dataloaders_utils import get_dataloaders
-from markov_bridges.utils.experiment_files import ExperimentFiles
+from markov_bridges.utils.experiment_files import ExperimentFiles,get_experiment_dir
 from markov_bridges.configs.config_classes.trainers.trainer_config import CJBTrainerConfig
 from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
@@ -10,7 +12,7 @@ from markov_bridges.configs.config_classes.generative_models.cjb_config import C
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
 
 from markov_bridges.models.generative_models.cjb_lightning import ClassificationForwardRateL
-from markov_bridges.models.generative_models.cjb import CJBL
+from markov_bridges.models.generative_models.cjb_lightning import CJBL
 from markov_bridges.configs.config_classes.networks.temporal_networks_config import SequenceTransformerConfig
 from markov_bridges.configs.config_classes.networks.temporal_networks_config import TemporalMLPConfig
 from markov_bridges.configs.config_classes.data.graphs_configs import dataset_str_to_config
@@ -20,7 +22,7 @@ from markov_bridges.configs.config_classes.metrics.metrics_configs import Hellin
 from markov_bridges.configs.config_classes.pipelines.pipeline_configs import BasicPipelineConfig
 
 if __name__=="__main__":
-    train = True
+    train = False
     dataset_name = "community_small"
     if train:
         model_config = CJBConfig()
@@ -44,26 +46,12 @@ if __name__=="__main__":
         model_config.trainer.metrics = metrics
         experiment_files = ExperimentFiles(experiment_name="cjb",
                                            experiment_type="graph",
-                                           experiment_indentifier="lightning_test8",
+                                           experiment_indentifier="lightning_test9",
                                            delete=True)
         cjb = CJBL(model_config,experiment_files)
         cjb.train()
     else:
-        experiment_files = ExperimentFiles(experiment_name="cjb",
-                                           experiment_type="graph",
-                                           experiment_indentifier="lightning_test2",
-                                           delete=False)
-        config_path_json = json.load(open(experiment_files.config_path, "r"))
-        if hasattr(config_path_json,"delete"):
-            config_path_json["delete"] = False
-        model_config = CJBConfig(**config_path_json)
-        dataloaders = get_dataloaders(model_config)
-
-        CKPT_PATH = r"C:\Users\cesar\Desktop\Projects\DiffusiveGenerativeModelling\OurCodes\markov_bridges\results\cjb\graph\lightning_test\lightning_logs\version_0\checkpoints\epoch=9-step=40.ckpt"
-        #CKPT_PATH = '/home/df630/markov_bridges/results/cmb/independent/lightning_test/lightning_logs/version_0/checkpoints/epoch=9-step=80.ckpt'
-        model = torch.load(CKPT_PATH)
-        mixed_model = ClassificationForwardRateL(model_config)
-        mixed_model.load_state_dict(model["state_dict"])
-
+        experiment_files = ExperimentFiles(experiment_name="cjb",experiment_type="graph",experiment_indentifier="lightning_test9",delete=False)      
+        cjb = CJBL(experiment_source=experiment_files,checkpoint_type="best")
 
 
