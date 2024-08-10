@@ -3,7 +3,6 @@
 import torch
 from markov_bridges.configs.config_classes.metrics.metrics_configs import BasicMetricConfig
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
-from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.models.metrics.abstract_metrics import BasicMetric
 from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeapingOutput
 from markov_bridges.utils.plots.music_plots import plot_songs
@@ -11,7 +10,7 @@ from markov_bridges.utils.plots.music_plots import plot_songs
 class MusicPlots(BasicMetric):
     """
     """
-    def __init__(self, model: CJB, metrics_config: BasicMetricConfig):
+    def __init__(self, model, metrics_config: BasicMetricConfig):
         super().__init__(model, metrics_config)
         self.conditional_dimension = model.config.data.context_discrete_dimension
 

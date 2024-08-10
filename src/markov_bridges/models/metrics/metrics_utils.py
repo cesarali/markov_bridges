@@ -1,7 +1,6 @@
 import torch
 from typing import Union,List
 
-from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeapingOutput
 from markov_bridges.models.metrics.abstract_metrics import BasicMetric
 from markov_bridges.models.metrics.music_metrics import MusicPlots
@@ -87,7 +86,7 @@ class GatherSamples:
         if len(self.sample) > 0:
             self.sample = torch.cat(self.sample,axis=0)
 
-def load_metric(cjb:CJB,metric_config:Union[str,BasicMetricConfig]):
+def load_metric(cjb,metric_config:Union[str,BasicMetricConfig]):
     # Metrics can be passed as simple strings or with the full ConfigClass
     # here we ensure the metric is a config before defining the class
     if isinstance(metric_config,str):
@@ -132,7 +131,7 @@ def obtain_metrics_stats(model_config:CJBConfig,metrics_configs_list:List[BasicM
 
     return return_path,return_origin,requieres_test_loop,number_of_samples_to_gather
 
-def log_metrics(model:CJB,metrics_configs_list,epoch=None,debug=False):
+def log_metrics(model,metrics_configs_list,epoch=None,debug=False):
     """
     In order to obtain metrics one is usually requiered to generate a sample of the size of the test set
     and obtain statistics for both the test set as well as the whole generated samples and perform distances
@@ -177,7 +176,7 @@ class LogMetrics:
     """
     metrics:List[BasicMetric]
 
-    def __init__(self,model:CJB,
+    def __init__(self,model,
                  metrics_configs_list:List[BasicMetricConfig|str],
                  debug=False) -> None:
         
@@ -228,7 +227,7 @@ class LogMetrics:
         if self.number_of_samples_to_gather != 0:
             self.samples_bag = GatherSamples()
 
-    def __call__(self, model:CJB,epoch=None):
+    def __call__(self, model,epoch=None):
         """
         """
         # dict to gather and return all calculated metrics

@@ -20,6 +20,8 @@ from markov_bridges.models.networks.temporal.temporal_networks_utils import load
 from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from collections import namedtuple
+from markov_bridges.utils.experiment_files import ExperimentFiles
+
 
 from torch.optim.lr_scheduler import(
     ReduceLROnPlateau,
@@ -272,6 +274,8 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
                 g['lr'] = new_lr
         optimizer.step()
         self.number_of_training_step += 1
+        if self.do_ema:
+            self.update_ema()
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
     
@@ -284,7 +288,7 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
         sampled_x = self.sample_x(target_discrete, source_discrete, databatch.time).float()
         # loss
         loss = self.loss(databatch,sampled_x)
-        self.log('test_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         return loss
     
     def configure_optimizers(self):
@@ -334,3 +338,53 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
                                               factor=self.config.trainer.factor, 
                                               patience=self.config.trainer.patience)
         return scheduler
+    
+import json
+import torch
+from torch import nn
+from torch.utils.data import DataLoader
+
+from typing import Union
+from dataclasses import asdict
+
+import numpy as np
+from torch.nn.functional import softmax
+from markov_bridges.utils.experiment_files import ExperimentFiles
+
+from markov_bridges.data.dataloaders_utils import get_dataloaders
+from markov_bridges.data.graphs_dataloader import GraphDataloader
+from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
+from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
+from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
+from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
+from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
+from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+
+from dataclasses import dataclass
+
+
+@dataclass
+class CJBL:
+    """
+    This class contains all elements to sample and train a conditional jump bridge model
+    
+    if DEVICE is not provided it is obtained from the trainer config 
+
+    the actual torch model that contains the networks for sampling is specified in forward rate
+    and contains all the mathematical elements.
+
+    the experiment folder is created in experiment files and has to be provided by hand, 
+    currently it is passed to the model by the trainer, it is only needed during training
+    """
+    config: CJBConfig = None
+    experiment_dir:str = None
+
+    experiment_files: ExperimentFiles = None
+    dataloader: Union[MarkovBridgeDataloader|GraphDataloader|LankhPianoRollDataloader] = None
+    forward_rate: Union[ClassificationForwardRate] = None
+    pipeline:CJBPipeline = None
+    type_of_load:Union[str,int] = "best"
+
+
+
+

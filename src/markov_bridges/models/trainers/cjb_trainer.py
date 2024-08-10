@@ -137,7 +137,6 @@ class CJBTrainer(Trainer):
         # sample x from z
         sampled_x = self.generative_model.forward_rate.sample_x(target_discrete, source_discrete, databatch.time).float()
         databatch = nametuple_to_device(databatch, self.device)
-        databatch.time
         # loss
         model_classification = self.generative_model.forward_rate.classify(sampled_x, databatch.time, databatch)
         model_classification_ = model_classification.reshape(-1, self.config.data.vocab_size)
@@ -180,8 +179,8 @@ class CJBTrainer(Trainer):
                 elif self.config.trainer.scheduler == "reduce":
                     self.scheduler.step(loss)
 
-                if self.do_ema:
-                    self.generative_model.forward_rate.update_ema()
+        if self.do_ema:
+            self.generative_model.forward_rate.update_ema()
 
         self.writer.add_scalar('training loss', loss.item(), number_of_training_step)
         return loss

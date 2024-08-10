@@ -7,15 +7,18 @@ from markov_bridges.models.generative_models.cjb_rate import ClassificationForwa
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeaping,TauLeapingOutput
 from markov_bridges.models.pipelines.samplers.ode_solver_cfm import ODESamplerCFM
-     
-class CJBPipeline:
+from markov_bridges.models.pipelines.abstract_pipeline import AbstractPipeline
+
+class CJBPipeline(AbstractPipeline):
     """
     This is a wrapper for the stochastic process sampler TauDiffusion, will generate samples
     in the same device as the one provided for the forward model
     """
-    def __init__(self,config:CMBConfig,
-                 rate_model:ClassificationForwardRate,
-                 dataloader:MarkovBridgeDataloader):
+    def __init__(
+            self,config:CMBConfig,
+            rate_model:ClassificationForwardRate,
+            dataloader:MarkovBridgeDataloader
+            ):
         self.config:CMBConfig = config
         self.rate_model:ClassificationForwardRate = rate_model
         self.dataloder:MarkovBridgeDataloader = dataloader

@@ -95,7 +95,8 @@ class GraphDataloader(MarkovBridgeDataloader):
 
         self.train_dataloader = DataLoader(train_data, batch_size=self.graph_config.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_data,batch_size=self.graph_config.batch_size, shuffle=True)
-
+        self.validation_dataloader = self.test_dataloader
+        
         self.fields = test_data.fields
         self.DatabatchNameTuple = namedtuple("DatabatchClass", self.fields)
         self.graph_config.fields = self.fields

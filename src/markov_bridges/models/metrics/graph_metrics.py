@@ -371,7 +371,6 @@ def eval_graph_list(graph_ref_list, grad_pred_list, methods=None, windows=True, 
 
 from markov_bridges.models.metrics.abstract_metrics import BasicMetric
 from markov_bridges.configs.config_classes.metrics.metrics_configs import GraphMetricsConfig
-from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeapingOutput
 
@@ -380,7 +379,7 @@ from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeapingO
 class GraphsMetrics(BasicMetric):
     """
     """
-    def __init__(self, model: CJB, metrics_config: GraphMetricsConfig):
+    def __init__(self, model, metrics_config: GraphMetricsConfig):
         super().__init__(model, metrics_config)
         self.transform_to_native_shape = model.dataloader.transform_to_native_shape
         self.networkx_from_sample = model.dataloader.networkx_from_sample

@@ -2,12 +2,10 @@ import torch
 import json
 from typing import List,Union
 
-from markov_bridges.models.generative_models.cjb import CJB
 from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeapingOutput
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple,MarkovBridgeDataClass
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.configs.config_classes.metrics.metrics_configs import BasicMetricConfig
-
 
 class BasicMetric:
     """
@@ -23,7 +21,7 @@ class BasicMetric:
     """
     name:str 
 
-    def __init__(self,model:CJB,metrics_config:BasicMetricConfig):
+    def __init__(self,model,metrics_config:BasicMetricConfig):
         self.metric_config = metrics_config
         self.name = metrics_config.name
         self.compute_in_gpu = metrics_config.compute_in_gpu

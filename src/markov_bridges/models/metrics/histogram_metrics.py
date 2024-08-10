@@ -2,8 +2,6 @@ import torch
 from typing import Tuple
 import torch.nn.functional as F
 from dataclasses import dataclass
-from markov_bridges.models.generative_models.cjb import CJB
-from markov_bridges.models.generative_models.cmb import CMB
 
 from markov_bridges.configs.config_classes.metrics.metrics_configs import (
     HellingerMetricConfig,
@@ -32,7 +30,7 @@ class HellingerMetric(BasicMetric):
     plot_binary
     plot_histogram_colors
     """
-    def __init__(self,model:CJB,metrics_config:HellingerMetricConfig):
+    def __init__(self,model,metrics_config:HellingerMetricConfig):
         super().__init__(model,metrics_config)
 
         self.binary = metrics_config.binary
@@ -151,7 +149,7 @@ class MixedHellingerMetric(BasicMetric):
     plot_binary
     plot_histogram_colors
     """
-    def __init__(self,model:CMB,metrics_config:MixedHellingerMetricConfig):
+    def __init__(self,model,metrics_config:MixedHellingerMetricConfig):
         super().__init__(model,metrics_config)
         
         # mixed data characteristics

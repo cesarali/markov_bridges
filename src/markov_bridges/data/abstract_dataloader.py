@@ -128,6 +128,10 @@ class MarkovBridgeDataloader:
     source denotes the distribution at time = 0 
     target denotes the distribution at time = 1
     """
+    train_dataloader:DataLoader = None
+    test_dataloader:DataLoader = None
+    validation_dataloader:DataLoader = None
+    
     def __init__(self,config:None):
         if config is not None:
             self.has_context_discrete = config.has_context_discrete    
@@ -176,6 +180,8 @@ class MarkovBridgeDataloader:
     def test(self):
         return self.test_dataloader
     
+    def validation(self):
+        return self.validation_dataloader
     
     def get_data_sample(self,sample_size:int,train:bool=True)->MarkovBridgeDataNameTuple:
         """
