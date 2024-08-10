@@ -18,7 +18,7 @@ from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
 from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
 from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
-from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
+from markov_bridges.models.deprecated.generative_models.cjb_rate import ClassificationForwardRate
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
 @dataclass

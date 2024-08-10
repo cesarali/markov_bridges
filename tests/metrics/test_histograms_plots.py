@@ -4,7 +4,7 @@ import torch
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 from markov_bridges.configs.experiments_configs.graphs_experiments import get_graph_experiment
 
-from markov_bridges.models.generative_models.cjb import CJB
+from markov_bridges.models.deprecated.generative_models.cjb import CJB
 from markov_bridges.models.metrics.metrics_utils import log_metrics
 from markov_bridges.configs.config_classes.metrics.metrics_configs import (
     MetricsAvaliable,

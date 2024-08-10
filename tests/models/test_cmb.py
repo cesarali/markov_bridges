@@ -1,6 +1,6 @@
 
 import torch
-from markov_bridges.models.generative_models.cmb import CMB
+from markov_bridges.models.deprecated.generative_models.cmb import CMB
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
 from markov_bridges.models.networks.temporal.mixed.mixed_networks_utils import load_mixed_network

@@ -6,7 +6,7 @@ import lightning as L
 from markov_bridges.data.dataloaders_utils import get_dataloaders
 from markov_bridges.utils.experiment_files import ExperimentFiles,get_experiment_dir
 from markov_bridges.configs.config_classes.trainers.trainer_config import CJBTrainerConfig
-from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
+from markov_bridges.models.deprecated.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
 
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
@@ -22,15 +22,11 @@ from markov_bridges.configs.config_classes.metrics.metrics_configs import Hellin
 from markov_bridges.configs.config_classes.pipelines.pipeline_configs import BasicPipelineConfig
 
 if __name__=="__main__":
-    train = False
+    train = True
     dataset_name = "community_small"
     if train:
         model_config = CJBConfig()
         model_config.data = dataset_str_to_config[dataset_name](batch_size=20)
-        #experiment_config.data = LakhPianoRollConfig(has_context_discrete=True,
-        #                                             context_discrete_dimension=64) # CHANGE
-        # temporal network
-        #experiment_config.temporal_network = SequenceTransformerConfig(num_heads=1,num_layers=1) #CHANGE
         model_config.temporal_network = TemporalMLPConfig(hidden_dim=150,time_embed_dim=50)
         model_config.trainer = CJBTrainerConfig(
             number_of_epochs=100,
@@ -53,5 +49,7 @@ if __name__=="__main__":
     else:
         experiment_files = ExperimentFiles(experiment_name="cjb",experiment_type="graph",experiment_indentifier="lightning_test9",delete=False)      
         cjb = CJBL(experiment_source=experiment_files,checkpoint_type="best")
+        databatch = cjb.dataloader.get_databatch()
+        print(databatch._asdict().keys())
 
 

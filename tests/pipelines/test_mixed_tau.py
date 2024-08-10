@@ -5,7 +5,7 @@ from markov_bridges.configs.config_classes.pipelines.pipeline_configs import CMB
 from markov_bridges.models.networks.temporal.mixed.mixed_networks_utils import load_mixed_network
 
 from markov_bridges.data.categorical_samples import IndependentMixDataloader
-from markov_bridges.models.generative_models.cmb_forward import MixedForwardMap
+from markov_bridges.models.deprecated.generative_models.cmb_forward import MixedForwardMap
 from markov_bridges.models.pipelines.pipeline_cmb import CMBPipeline
 
 import torch

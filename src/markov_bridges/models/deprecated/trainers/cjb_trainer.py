@@ -14,14 +14,14 @@ from torch.optim.lr_scheduler import MultiStepLR
 from torch.optim.lr_scheduler import StepLR
 
 
-from markov_bridges.models.generative_models.cjb import CJB
+from markov_bridges.models.deprecated.generative_models.cjb import CJB
 
 import torch
 import numpy as np
 from torch.optim.adam import Adam
 from markov_bridges.models.networks.utils.ema import EMA
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
-from markov_bridges.models.trainers.abstract_trainer import TrainerState,Trainer
+from markov_bridges.models.deprecated.trainers.abstract_trainer import TrainerState,Trainer
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.utils.paralellism import nametuple_to_device
 

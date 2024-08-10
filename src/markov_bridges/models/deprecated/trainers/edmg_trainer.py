@@ -12,7 +12,7 @@ import numpy as np
 from torch.optim.adam import Adam
 from markov_bridges.models.networks.utils.ema import EMA
 from markov_bridges.configs.config_classes.generative_models.edmg_config import EDMGConfig
-from markov_bridges.models.trainers.abstract_trainer import TrainerState,Trainer
+from markov_bridges.models.deprecated.trainers.abstract_trainer import TrainerState,Trainer
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.utils.paralellism import nametuple_to_device
 from markov_bridges.utils.equivariant_diffusion import (

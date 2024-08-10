@@ -14,9 +14,9 @@ from markov_bridges.configs.config_classes.networks.temporal_networks_config imp
 from markov_bridges.configs.config_classes.metrics.metrics_configs import MetricsAvaliable,HellingerMetricConfig,GraphMetricsConfig
 
 # models
-
+from markov_bridges.models.generative_models.cjb_lightning import CJBL
 from markov_bridges.configs.config_classes.trainers.trainer_config import CJBTrainerConfig
-from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
+from markov_bridges.models.deprecated.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.utils.experiment_files import ExperimentFiles
 from markov_bridges.configs.config_classes.pipelines.pipeline_configs import BasicPipelineConfig
 
@@ -57,12 +57,20 @@ def continue_graph_experiment(experiment_dir):
 if __name__=="__main__":
     start = True
     if start:
-        experiment_config = get_graph_experiment(number_of_epochs=100)
+        experiment_config = get_graph_experiment(number_of_epochs=600)
+        #experiment_files = ExperimentFiles(experiment_name="cjb",
+        #                                   experiment_type="graph",
+        #                                   experiment_indentifier="old",
+        #                                   delete=True)    
+        #trainer = CJBTrainer(config=experiment_config,
+        #                    experiment_files=experiment_files)
+        #trainer.train()
         experiment_files = ExperimentFiles(experiment_name="cjb",
-                                        experiment_type="graph")    
-        trainer = CJBTrainer(config=experiment_config,
-                            experiment_files=experiment_files)
-        trainer.train()
+                                           experiment_type="graph",
+                                           experiment_indentifier="lightning",
+                                           delete=True)    
+        cjb = CJBL(experiment_config,experiment_files)
+        cjb.train()
     else:
         experiment_dir = r"C:\Users\cesar\Desktop\Projects\DiffusiveGenerativeModelling\OurCodes\markov_bridges\results\cjb\graph\1718616860"
         continue_graph_experiment(experiment_dir)

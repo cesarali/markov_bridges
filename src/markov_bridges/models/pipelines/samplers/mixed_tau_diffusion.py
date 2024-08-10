@@ -6,7 +6,7 @@ from torch import functional as F
 from torch.distributions import Normal
 
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
-from markov_bridges.models.generative_models.cmb_forward import MixedForwardMap
+from markov_bridges.models.deprecated.generative_models.cmb_forward import MixedForwardMap
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 
 class MixedTauState:

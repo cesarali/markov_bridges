@@ -5,7 +5,7 @@ from typing import Union
 from torch import functional as F
 
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
-from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
+from markov_bridges.models.deprecated.generative_models.cjb_rate import ClassificationForwardRate
 def set_diagonal_rate(rates,x):
     """
     Ensures that we have the right diagonal rate

@@ -1,5 +1,5 @@
 
-from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
+from markov_bridges.models.deprecated.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
 def start_new_experiment(config, experiment_name="cjb", experiment_type="music"):

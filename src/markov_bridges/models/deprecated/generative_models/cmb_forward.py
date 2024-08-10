@@ -88,7 +88,7 @@ class MixedForwardMap(EMA,nn.Module):
         x_0 = x_0.flatten()
 
         x_m = x_0*(1.-t) + x_1*t
-        variance = (self.brownian_bridge**2) * t*(1. - t)
+        variance = (self.brownian_sigma**2) * t*(1. - t)
 
         x = Normal(x_m,variance).sample().to(device)
         x = x.reshape(original_shape)

@@ -34,7 +34,6 @@ def get_experiment_dir(experiment_name, experiment_type, experiment_indentifier,
 
     return experiment_dir
 
-
 @dataclass
 class ExperimentFiles:
     """

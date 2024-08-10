@@ -7,9 +7,9 @@ from abc import ABC, abstractmethod
 from tqdm import tqdm
 
 from torch.utils.tensorboard import SummaryWriter
-from markov_bridges.models.generative_models.cjb import CJB
-from markov_bridges.models.generative_models.cmb import CMB
-from markov_bridges.models.generative_models.cfm import CFM
+from markov_bridges.models.deprecated.generative_models.cjb import CJB
+from markov_bridges.models.deprecated.generative_models.cmb import CMB
+from markov_bridges.models.deprecated.generative_models.cfm import CFM
 from markov_bridges.models.generative_models.edmg import EDMG
 
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig

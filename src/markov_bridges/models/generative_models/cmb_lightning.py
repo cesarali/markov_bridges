@@ -18,7 +18,10 @@ from torch.optim.lr_scheduler import(
     MultiStepLR,
     StepLR
 )
-                                    
+
+from markov_bridges.models.generative_models.generative_models_lightning import AbstractGenerativeModelL
+from markov_bridges.models.metrics.metrics_utils import LogMetrics
+
 from torch.nn.functional import softmax
 
 
@@ -41,6 +44,9 @@ from markov_bridges.utils.shapes import right_shape,right_time_size
 from markov_bridges.models.pipelines.thermostats import Thermostat
 from markov_bridges.models.networks.temporal.mixed.mixed_networks_utils import load_mixed_network
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
+from markov_bridges.data.dataloaders_utils import get_dataloaders
+from markov_bridges.utils.experiment_files import ExperimentFiles
+from markov_bridges.models.pipelines.pipeline_cmb import CMBPipeline
 
 class MixedForwardMapL(EMA,L.LightningModule):
 
@@ -51,11 +57,9 @@ class MixedForwardMapL(EMA,L.LightningModule):
         self.save_hyperparameters()
         # Important: This property activates manual optimization.
         self.automatic_optimization = False
-
         self.config = config
-        self.do_ema = False
-        self.lr = None
 
+        self.vocab_size = self.config.data.vocab_size
         self.has_target_discrete = config.data.has_target_discrete 
         self.has_target_continuous = config.data.has_target_continuous 
 
@@ -188,14 +192,19 @@ class MixedForwardMapL(EMA,L.LightningModule):
                                                            continuous_sample,
                                                            databatch.time,
                                                            databatch)
-        # Train What is Needed
-        if self.has_target_discrete:
-            full_loss = torch.Tensor([0.]).to(discrete_sample.device)
-            full_loss += self.discrete_loss(databatch,discrete_head,discrete_sample).mean()
         if self.has_target_continuous:
             full_loss = torch.Tensor([0.]).to(continuous_sample.device)
-            full_loss += self.continuous_loss(databatch,continuous_head,continuous_sample).mean()
-        return full_loss
+        if self.has_target_discrete:
+            full_loss = torch.Tensor([0.]).to(discrete_sample.device)
+
+        # Train What is Needed
+        if self.has_target_discrete:
+            discrete_loss_ = self.discrete_loss(databatch,discrete_head,discrete_sample).mean()
+            full_loss += discrete_loss_
+        if self.has_target_continuous:
+            continuous_loss_ = self.continuous_loss(databatch,continuous_head,continuous_sample).mean()
+            full_loss += continuous_loss_
+        return full_loss,discrete_loss_,continuous_loss_
     
     def discrete_loss(self, databatch:MarkovBridgeDataNameTuple, discrete_head, discrete_sample=None): 
         # reshape for cross logits
@@ -261,8 +270,9 @@ class MixedForwardMapL(EMA,L.LightningModule):
         optimizer = self.optimizers()
         # obtain loss
         databatach = self.DatabatchNameTuple(*batch)
+        # sample bridge
         discrete_sample, continuous_sample = self.sample_bridge(databatach)
-        loss = self.loss(databatach, discrete_sample, continuous_sample)
+        loss,discrete_loss_,continuous_loss_ = self.loss(databatach, discrete_sample, continuous_sample)
         # optimization
         optimizer.zero_grad()
         self.manual_backward(loss)
@@ -276,15 +286,19 @@ class MixedForwardMapL(EMA,L.LightningModule):
         # ema
         if self.do_ema:
             self.update_ema()
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_loss', loss, on_step=True, prog_bar=True, logger=True)
+        self.log('discrete_training_loss', discrete_loss_, on_step=True, prog_bar=True, logger=True)
+        self.log('continuous_training_loss', continuous_loss_, on_step=True, prog_bar=True, logger=True)
         self.number_of_training_step += 1
         return loss
 
     def validation_step(self, batch, batch_idx):
         databatach = self.DatabatchNameTuple(*batch)
         discrete_sample, continuous_sample = self.sample_bridge(databatach)
-        loss = self.loss(databatach, discrete_sample, continuous_sample)
-        self.log('test_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        loss,discrete_loss_,continuous_loss_ = self.loss(databatach, discrete_sample, continuous_sample)
+        self.log('val_loss', loss, on_step=False, prog_bar=True, logger=True)
+        self.log('discrete_val_loss', discrete_loss_, on_step=True, prog_bar=True, logger=True)
+        self.log('continuous_val_loss', continuous_loss_, on_step=True, prog_bar=True, logger=True)
         return loss
 
     def configure_optimizers(self):
@@ -344,3 +358,39 @@ class MixedForwardMapL(EMA,L.LightningModule):
                     scheduler.step()
                 elif self.config.trainer.scheduler == "reduce":
                     scheduler.step(loss_)
+
+class CMBL(AbstractGenerativeModelL):
+
+    config_type = CMBConfig
+
+    def define_from_config(self,config:CMBConfig):
+        self.config = config
+        self.dataloader = get_dataloaders(self.config)
+        self.model = MixedForwardMapL(self.config)
+        self.pipeline = CMBPipeline(self.config,self.model,self.dataloader)
+        self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
+
+    def define_from_dir(self, experiment_dir:str|ExperimentFiles=None, checkpoint_type: str = "best"):
+        # define experiments files
+        if isinstance(experiment_dir,str):
+            self.experiment_files = ExperimentFiles(experiment_dir=experiment_dir)
+        else:
+            self.experiment_files = experiment_dir
+        # read config
+        self.config = self.read_config(self.experiment_files)
+        # obtain dataloader
+        self.dataloader = get_dataloaders(self.config)
+        # obtain checkpoint path
+        CKPT_PATH = self.experiment_files.get_lightning_checkpoint_path(checkpoint_type)
+        # load model
+        self.model = MixedForwardMapL.load_from_checkpoint(CKPT_PATH, config=self.config)
+        self.pipeline = CMBPipeline(self.config,self.model,self.dataloader)
+        self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
+        return self.config
+
+    def test_evaluation(self) -> dict:
+        #all_metrics = self.log_metrics(self,"last")
+        self.define_from_dir(self.experiment_files.experiment_dir,checkpoint_type="best")
+        all_metrics = self.log_metrics(self,"best")
+        return all_metrics
+    

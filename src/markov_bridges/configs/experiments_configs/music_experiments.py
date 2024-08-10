@@ -18,7 +18,7 @@ from markov_bridges.configs.config_classes.metrics.metrics_configs import (
 
 # models
 from markov_bridges.configs.config_classes.trainers.trainer_config import CJBTrainerConfig
-from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
+from markov_bridges.models.deprecated.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
 def conditional_music_experiment(number_of_epochs=3,sinusoidal=False)->CJBConfig:

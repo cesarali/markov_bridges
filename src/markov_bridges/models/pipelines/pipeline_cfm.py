@@ -4,7 +4,7 @@ from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.models.pipelines.samplers.ode_solver_cfm import ODESamplerCFM
 from markov_bridges.configs.config_classes.generative_models.cfm_config import CFMConfig
-from markov_bridges.models.generative_models.cfm_forward import ContinuousForwardMap
+from markov_bridges.models.deprecated.generative_models.cfm_forward import ContinuousForwardMap
 
 from markov_bridges.utils.paralellism import nametuple_to_device
 

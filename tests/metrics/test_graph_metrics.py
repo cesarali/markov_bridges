@@ -7,7 +7,7 @@ from markov_bridges.configs.config_classes.data.graphs_configs import (
 
 from markov_bridges.configs.experiments_configs.graphs_experiments import get_graph_experiment
 
-from markov_bridges.models.generative_models.cjb import CJB
+from markov_bridges.models.deprecated.generative_models.cjb import CJB
 from markov_bridges.data.graphs_dataloader import GraphDataloader
 from markov_bridges.models.metrics.metrics_utils import LogMetrics
 from markov_bridges.configs.config_classes.metrics.metrics_configs import GraphMetricsConfig

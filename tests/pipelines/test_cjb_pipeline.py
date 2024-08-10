@@ -6,10 +6,10 @@ from markov_bridges.configs.config_classes.generative_models.cjb_config import C
 from markov_bridges.configs.config_classes.networks.temporal_networks_config import SequenceTransformerConfig
 from markov_bridges.configs.experiments_configs.music_experiments import conditional_music_experiment
 
-from markov_bridges.models.generative_models.cjb import CJB
-from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
+from markov_bridges.models.deprecated.generative_models.cjb import CJB
+from markov_bridges.models.deprecated.generative_models.cjb_rate import ClassificationForwardRate
 from markov_bridges.models.pipelines.pipeline_cjb import CJBPipeline
-from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
+from markov_bridges.models.deprecated.trainers.cjb_trainer import CJBTrainer
 from matplotlib import pyplot as plt
 from markov_bridges.data.dataloaders_utils import get_dataloaders
 

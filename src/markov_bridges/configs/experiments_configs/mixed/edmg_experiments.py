@@ -12,7 +12,7 @@ from markov_bridges.models.generative_models.edmg import EDMG
 from markov_bridges.models.networks.temporal.edmg.edmg_utils import get_edmg_model
 from markov_bridges.data.dataloaders_utils import get_dataloaders
 
-from markov_bridges.models.trainers.edmg_trainer import EDMGTrainer
+from markov_bridges.models.deprecated.trainers.edmg_trainer import EDMGTrainer
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
 from markov_bridges.configs.config_classes.metrics.metrics_configs import (

@@ -6,7 +6,7 @@ from markov_bridges.configs.config_classes.generative_models.cjb_config import C
 from markov_bridges.configs.experiments_configs.music_experiments import conditional_music_experiment
 from markov_bridges.configs.config_classes.networks.temporal_networks_config import SequenceTransformerConfig
 
-from markov_bridges.models.generative_models.cjb import CJB
+from markov_bridges.models.deprecated.generative_models.cjb import CJB
 
 
 from markov_bridges.models.metrics.metrics_utils import log_metrics,LogMetrics

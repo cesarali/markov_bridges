@@ -1,7 +1,7 @@
 import pytest
 import torch
-from markov_bridges.models.generative_models.cjb import CJB
-from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
+from markov_bridges.models.deprecated.generative_models.cjb import CJB
+from markov_bridges.models.deprecated.trainers.cjb_trainer import CJBTrainer
 
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig

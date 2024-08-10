@@ -56,9 +56,6 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
         self.temporal_network_to_rate = config.temporal_network_to_rate
         self.DatabatchNameTuple = namedtuple("DatabatchClass", self.config.data.fields)
 
-
-
-
     def define_deep_models(self,config):
         self.nn_loss = nn.CrossEntropyLoss(reduction='none')
         self.temporal_network = load_temporal_network(config)
@@ -284,7 +281,7 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
         self.number_of_training_step += 1
         if self.do_ema:
             self.update_ema()
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_loss', loss, on_epoch=True,on_step=True, prog_bar=True, logger=True)
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -296,7 +293,7 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
         sampled_x = self.sample_x(target_discrete, source_discrete, databatch.time).float()
         # loss
         loss = self.loss(databatch,sampled_x)
-        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log('val_loss', loss, on_epoch=True,on_step=True, prog_bar=True, logger=True)
         return loss
     
     def configure_optimizers(self):
@@ -349,6 +346,8 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
 
 class CJBL(AbstractGenerativeModelL):
 
+    config_type = CJBConfig
+
     def define_from_config(self,config:CJBConfig):
         self.config = config
         self.dataloader = get_dataloaders(self.config)
@@ -356,27 +355,22 @@ class CJBL(AbstractGenerativeModelL):
         self.pipeline = CJBPipeline(self.config,self.model,self.dataloader)
         self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
 
-    def read_config(self,experiment_files):
-        config_json = super().read_config(experiment_files)
-        config = CJBConfig(**config_json)   
-        return config
-     
     def define_from_dir(self, experiment_dir:str|ExperimentFiles=None, checkpoint_type: str = "best"):
+        # define experiments files
         if isinstance(experiment_dir,str):
             self.experiment_files = ExperimentFiles(experiment_dir=experiment_dir)
         else:
             self.experiment_files = experiment_dir
-
+        # read config
         self.config = self.read_config(self.experiment_files)
+        # obtain dataloader
         self.dataloader = get_dataloaders(self.config)
-
+        # obtain checkpoint path
         CKPT_PATH = self.experiment_files.get_lightning_checkpoint_path(checkpoint_type)
-        print(CKPT_PATH)
-
+        # load model
         self.model = ClassificationForwardRateL.load_from_checkpoint(CKPT_PATH, config=self.config)
-        self.model = None
-        self.pipeline = None
-        self.log_metrics = None
+        self.pipeline = CJBPipeline(self.config,self.model,self.dataloader)
+        self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
 
         return self.config
 

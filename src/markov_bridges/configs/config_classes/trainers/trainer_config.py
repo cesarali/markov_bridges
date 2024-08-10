@@ -58,10 +58,6 @@ class BasicTrainerConfig:
 @dataclass
 class CJBTrainerConfig(BasicTrainerConfig):
     name:str = "CJBTrainer"
-    loss_regularize_variance:bool = False
-    loss_regularize:bool = False
-    loss_regularize_square:bool = False
-    max_iterations:int = 1000000
     warm_up:int=0
 
     def __post_init__(self):
@@ -80,9 +76,6 @@ class CJBTrainerConfig(BasicTrainerConfig):
 @dataclass
 class CMBTrainerConfig(BasicTrainerConfig):
     name:str = "CMBTrainer"
-    loss_regularize_variance:bool = False
-    loss_regularize:bool = False
-    loss_regularize_square:bool = False
     max_iterations:int = 1000000
     warm_up:int=0
 
@@ -97,7 +90,6 @@ class CMBTrainerConfig(BasicTrainerConfig):
             else:
                 pass
         self.metrics = new_metrics
-
 
 @dataclass
 class EDMGTrainerConfig(BasicTrainerConfig):

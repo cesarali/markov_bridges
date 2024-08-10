@@ -15,11 +15,13 @@ from markov_bridges.configs.config_classes.generative_models.edmg_config import 
 class AbstractGenerativeModelL(ABC):
     """
     """
+    config_type:type
     config:CFMConfig|CJBConfig|CMBConfig|EDMGConfig = None
     experiment_files:ExperimentFiles=None
     model:L.LightningModule=None
     dataloader:MarkovBridgeDataloader=None
     pipeline:AbstractPipeline=None
+
     def __init__(
             self,
             config:CFMConfig|CJBConfig|CMBConfig|EDMGConfig=None,
@@ -29,24 +31,23 @@ class AbstractGenerativeModelL(ABC):
         ):
         """
         """
-        
         if experiment_files is not None:
             self.experiment_files = experiment_files
         elif config is not None:
             self.experiment_files = ExperimentFiles(experiment_name="generative_model",experiment_type="dummy",experiment_indentifier="dummy",delete=True)
-            
+
         if config is not None:
             self.define_from_config(config)
             self.experiment_files.create_directories(config)
         elif experiment_source is not None:
             self.define_from_dir(experiment_source,checkpoint_type)
 
-    @abstractmethod
     def read_config(self,experiment_files:ExperimentFiles):
         config_json = json.load(open(experiment_files.config_path, "r"))
         if hasattr(config_json,"delete"):
             config_json["delete"] = False
-        return config_json
+        config = self.config_type(**config_json)   
+        return config
     
     @abstractmethod
     def define_from_config(self,config):

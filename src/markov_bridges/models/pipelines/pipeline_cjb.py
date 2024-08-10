@@ -3,7 +3,7 @@ from markov_bridges.utils.paralellism import check_model_devices
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
-from markov_bridges.models.generative_models.cjb_rate import ClassificationForwardRate
+from markov_bridges.models.deprecated.generative_models.cjb_rate import ClassificationForwardRate
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 from markov_bridges.models.pipelines.samplers.tau_leaping_cjb import TauLeaping,TauLeapingOutput
 from markov_bridges.models.pipelines.samplers.ode_solver_cfm import ODESamplerCFM

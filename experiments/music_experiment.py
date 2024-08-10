@@ -5,8 +5,8 @@ from markov_bridges.configs.config_classes.generative_models.cjb_config import C
 from markov_bridges.configs.config_classes.metrics.metrics_configs import MetricsAvaliable, HellingerMetricConfig
 
 # models
-from markov_bridges.models.generative_models.cjb import CJB
-from markov_bridges.models.trainers.cjb_trainer import CJBTrainer
+from markov_bridges.models.deprecated.generative_models.cjb import CJB
+from markov_bridges.models.deprecated.trainers.cjb_trainer import CJBTrainer
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
 
