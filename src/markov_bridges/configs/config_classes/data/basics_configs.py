@@ -12,9 +12,6 @@ class MarkovBridgeDataConfig:
     dataset_name:str = "tensors" 
 
     # variables model
-    has_context_discrete: bool = False    
-    has_context_continuous: bool = False
-
     has_target_discrete: bool = True
     has_target_continuous: bool = False
 
@@ -25,18 +22,11 @@ class MarkovBridgeDataConfig:
     discrete_dimensions: int = 256
     continuos_dimensions: int = 0
 
-    context_discrete_dimension:int = 0
-    context_continuous_dimension:int = 0
-
     vocab_size: int = 129
     max_training_size: int = None
     max_test_size:int = None
 
     fields:list = field(default_factory=lambda:[])
-
-    def __post_init__(self):
-        self.discrete_generation_dimension = self.discrete_dimensions - self.context_discrete_dimension
-        self.continuous_generation_dimension = self.continuos_dimensions - self.context_continuous_dimension
 
 @dataclass
 class IndependentMixConfig(MarkovBridgeDataConfig):
@@ -53,6 +43,9 @@ class IndependentMixConfig(MarkovBridgeDataConfig):
 
     discrete_dimensions:int = 2
     continuos_dimensions:int = 2
+
+    context_discrete_dimension:int=0
+    context_continuous_dimension:int=0
 
     source_discrete_type: str = "uniform"
     source_continuous_type: str = "gaussian"
@@ -77,50 +70,6 @@ class IndependentMixConfig(MarkovBridgeDataConfig):
         if self.has_context_continuous and self.has_context_discrete:
             raise ValueError("Both has_context_continuous and has_context_discrete cannot be true at the same time.")
 
-    
-@dataclass
-class ColorMoonsConfig(MarkovBridgeDataConfig):
-    name:str = "colors_moons"
-    total_data_size: int = 2000
-
-    vocab_size: int = 4
-    continuos_dimensions:int = 2
-    discrete_dimensions:int = 1
-
-    has_target_discrete: bool = True
-    has_target_continuous: bool = True
-
-    source_dirichlet: float = 0.1 #label,dirichlet
-    source_discrete_type: str = "uniform"
-    source_continuous_type: str = "8gaussian" # gaussian,moons,8gaussian
-
-    target_dirichlet: float = 0.1
-    target_discrete_type: str = "label" #label,dirichlet
-    target_continuous_type: str = "moons" # gaussian,moons,8gaussian
-    
-
-@dataclass
-class CategoricalDataloaderConfig(MarkovBridgeDataConfig):
-    name:str = "CategoricalDataloader"
-    dataset_name:str = "categorical_dirichlet" # categorical_dirichlet
-    data_dir:str = image_data_path
-
-    dirichlet_alpha:float = None
-    categorical_probability:float = None
-
-    dimensions: int = 4
-    vocab_size: int = 2
-
-    batch_size: int = 23
-    test_split: float = 0.2
-    total_data_size: int = 60000
-    
-    temporal_net_expected_shape : List[int] = None
-    data_min_max: List[float] = field(default_factory=lambda:[0.,1.])
-
-    def __post_init__(self):
-        self.temporal_net_expected_shape =  [self.dimensions]
-
 @dataclass
 class GaussiansConfig(MarkovBridgeDataConfig):
     name:str = "Gaussians"
@@ -134,6 +83,7 @@ class GaussiansConfig(MarkovBridgeDataConfig):
     has_target_discrete: bool = False
     discrete_dimensions: int = 0
     continuos_dimensions: int = 2
+
     context_discrete_dimension: int = 0
 
     source_continuous_type: str = "gaussian"
@@ -149,5 +99,8 @@ class GaussiansConfig(MarkovBridgeDataConfig):
 
     def __post_init__(self):
         self.vocab_size = self.number_of_gaussians
-        if self.has_target_discrete: self.discrete_dimensions = 1
-        if self.has_context_discrete: self.context_discrete_dimension = 1
+        if self.has_target_discrete: 
+            self.discrete_dimensions = 1
+        if self.has_context_discrete: 
+            self.context_discrete_dimension = 1
+            self.has_target_discrete = False

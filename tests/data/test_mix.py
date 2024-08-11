@@ -1,5 +1,5 @@
 from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
-from markov_bridges.data.categorical_samples import IndependentMixDataloader
+from markov_bridges.data.gaussians2D_dataloaders import IndependentMixDataloader
 from dataclasses import asdict
 from pprint import pprint
 

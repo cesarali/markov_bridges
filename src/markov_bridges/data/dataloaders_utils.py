@@ -1,7 +1,7 @@
-from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
+from markov_bridges.data.sequences.music_dataloaders import LankhPianoRollDataloader
 from markov_bridges.data.graphs_dataloader import GraphDataloader
-from markov_bridges.data.categorical_samples import IndependentMixDataloader
-from markov_bridges.data.qm9_points_dataloader import QM9PointDataloader
+from markov_bridges.data.gaussians2D_dataloaders import IndependentMixDataloader
+from markov_bridges.data.qm9.qm9_points_dataloader import QM9PointDataloader
 from markov_bridges.data.gaussians2D_dataloaders import GaussiansDataloader
 from markov_bridges.data.sequences.simplex_sinosoidal import SinusoidalDataloader
 

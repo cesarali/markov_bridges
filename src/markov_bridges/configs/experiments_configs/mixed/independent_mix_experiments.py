@@ -1,7 +1,7 @@
 from markov_bridges.models.deprecated.trainers.cmb_trainer import CMBTrainer
 
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
-from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
+from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig,GaussiansConfig
 from markov_bridges.configs.config_classes.trainers.trainer_config import CMBTrainerConfig
 from markov_bridges.configs.config_classes.pipelines.pipeline_configs import CMBPipelineConfig
 from markov_bridges.configs.config_classes.networks.mixed_networks_config import MixedDeepMLPConfig
@@ -40,10 +40,15 @@ if __name__=="__main__":
                                        experiment_indentifier="old",
                                        delete=True) 
     model_config = get_independent_mix_experiment()
-    # cmb = CMBL(model_config,experiment_files)
-    # cmb.train()
-    
     trainer = CMBTrainer(config=model_config,
                          experiment_files=experiment_files)
     trainer.train()
     
+    """
+    experiment_files = ExperimentFiles(experiment_name="cmb",
+                                    experiment_type="independent",
+                                    experiment_indentifier="old",
+                                    delete=True)
+    cmb = CMBL(model_config,experiment_files)
+    cmb.train()
+    """

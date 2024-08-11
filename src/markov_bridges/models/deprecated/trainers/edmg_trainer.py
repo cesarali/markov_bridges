@@ -5,7 +5,7 @@ from torch.optim.adam import Adam
 from torch.utils.tensorboard import SummaryWriter
 
 import markov_bridges.data.qm9.utils as qm9utils
-from markov_bridges.models.generative_models.edmg import EDMG
+from markov_bridges.models.deprecated.generative_models.edmg import EDMG
 
 import torch
 import numpy as np
@@ -72,7 +72,7 @@ class EDMGTrainer(Trainer):
                 self.generative_model = EDMG(self.config, experiment_files=experiment_files, device=self.device)
             else:
                 self.generative_model = edmg
-                self.dataloader = self.generative_model.dataloader
+        self.dataloader = self.generative_model.dataloader
         self.dtype = torch.float32
         
     def preprocess_data(self, databatch):    
@@ -101,26 +101,9 @@ class EDMGTrainer(Trainer):
                               weight_decay=self.config.trainer.weight_decay)
         
         self.lr = self.config.trainer.learning_rate
-
-        #==================================================
-        #data_dummy = next(self.dataloader.train().__iter__())
-
-        if len(self.noising_model_config.conditioning) > 0:
-            print(f'Conditioning on {self.noising_model_config.conditioning}')
-            self.property_norms = compute_mean_mad(self.dataloader, 
-                                                   self.noising_model_config.conditioning, 
-                                                   self.data_config.dataset)
-            #context_dummy = prepare_context(self.noising_model_config.conditioning, data_dummy, property_norms)
-            #context_node_nf = context_dummy.size(2)
-        else:
-            context_node_nf = 0
-            property_norms = None
-
-        self.config.noising_model.context_node_nf = context_node_nf
-
         self.gradnorm_queue = Queue()
         self.gradnorm_queue.add(3000)  # Add large value that will be flushed.
-        
+        self.property_norms = self.dataloader.property_norms
         return np.inf
 
     def train_step(self,databatch:MarkovBridgeDataNameTuple, number_of_training_step,  epoch):

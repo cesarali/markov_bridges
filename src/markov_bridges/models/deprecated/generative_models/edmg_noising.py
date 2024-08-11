@@ -11,7 +11,7 @@ from markov_bridges.configs.config_classes.generative_models.edmg_config import 
 from markov_bridges.utils.shapes import right_shape,right_time_size,where_to_go_x
 from markov_bridges.models.pipelines.thermostats import Thermostat
 from markov_bridges.models.networks.temporal.mixed.mixed_networks_utils import load_mixed_network
-from markov_bridges.data.qm9_points_dataloader import QM9PointDataNameTuple
+from markov_bridges.data.qm9.qm9_points_dataloader import QM9PointDataNameTuple
 from torch.nn.functional import softmax
 
 def sum_except_batch(x):
@@ -30,7 +30,6 @@ class EquivariantDiffussionNoising(EMA,nn.Module):
     """
     def __init__(self, config:EDMGConfig,device,join_context=None):
         """
-        join_context(context_discrete,discrete_data,context_continuous,continuuous_data)->full_discrete,full_continuous: 
         this function should allow us to create a full discrete and continuous vector from the context and data
 
         """
@@ -54,8 +53,6 @@ class EquivariantDiffussionNoising(EMA,nn.Module):
     
         self.context_discrete_dimension = config_data.context_discrete_dimension
         self.context_continuous_dimension = config_data.context_continuous_dimension
-
-        self.join_context = join_context
 
         self.define_deep_models(config,device)
         self.define_bridge_parameters(config)

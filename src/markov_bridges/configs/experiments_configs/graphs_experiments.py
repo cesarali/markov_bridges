@@ -67,7 +67,7 @@ if __name__=="__main__":
         #trainer.train()
         experiment_files = ExperimentFiles(experiment_name="cjb",
                                            experiment_type="graph",
-                                           experiment_indentifier="lightning",
+                                           experiment_indentifier="lightning2",
                                            delete=True)    
         cjb = CJBL(experiment_config,experiment_files)
         cjb.train()

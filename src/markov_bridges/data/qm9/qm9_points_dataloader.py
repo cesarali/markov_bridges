@@ -48,26 +48,19 @@ class QM9PointDataloader(MarkovBridgeDataloader):
         self.qm9_config = config.data
         self.dataset = self.qm9_config.dataset
         self.conditioning =  config.noising_model.conditioning
-        self.get_dataloaders(self.qm9_config)
+        self.get_dataloaders(config)
 
-    def get_dataloaders(self,config):
+    def get_databach_keys(self):
+        return self.keys
+    
+    def get_dataloaders(self,config:EDMGConfig):
         """
         Creates the dataloaders
         """
-        self.dataloaders, self.charge_scale = retrieve_dataloaders(config)
+        self.keys,self.dataloaders, self.charge_scale = retrieve_dataloaders(self.qm9_config)
         self.dataset_info = get_dataset_info(self.qm9_config.dataset,self.qm9_config.remove_h)
-        
-        #self.data_dummy = next(iter(self.dataloaders['train']))
-    
-
-        #if len(self.conditioning) > 0:
-        #    print(f'Conditioning on {self.conditioning}')
-        #    property_norms = compute_mean_mad(self.dataloaders, self.conditioning, self.dataset)
-        #    context_dummy = prepare_context(self.conditioning, self.data_dummy, property_norms)
-        #    self.context_node_nf = context_dummy.size(2)
-        #else:
-        #    self.context_node_nf = 0
-        #    property_norms = None
+        context_node_nf = self.get_context_node_nf()
+        config.noising_model.context_node_nf = context_node_nf
         
     def train(self):
         return self.dataloaders["train"]
@@ -77,3 +70,20 @@ class QM9PointDataloader(MarkovBridgeDataloader):
     
     def validation(self):
         return self.dataloaders["valid"]
+    
+    def get_context_node_nf(self):
+        #==================================================
+        data_dummy = self.get_databatch()
+        if len(self.conditioning) > 0:
+            print(f'Conditioning on {self.conditioning}')
+
+            self.property_norms = compute_mean_mad(self, 
+                                                   self.conditioning, 
+                                                   self.qm9_config.dataset)
+            context_dummy = prepare_context(self.conditioning, data_dummy, self.property_norms)
+            context_node_nf = context_dummy.size(2)
+        else:
+            context_node_nf = 0
+            property_norms = None
+        return context_node_nf
+        

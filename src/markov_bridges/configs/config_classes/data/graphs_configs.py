@@ -13,8 +13,6 @@ graph_data_path = os.path.join(data_path,"raw","graph")
 @dataclass
 class GraphDataloaderGeometricConfig(MarkovBridgeDataConfig):
     name:str = "GraphDataloaderGeometric"
-    data_dir:str = graph_data_path
-
     dataset_name: str = None
     batch_size: int = None
     data_dir:str = graph_data_path
@@ -38,6 +36,9 @@ class GraphDataloaderGeometricConfig(MarkovBridgeDataConfig):
 
     temporal_net_expected_shape : List[int] = None
     data_min_max: List[float] = field(default_factory=lambda:[0.,1.])
+
+    has_context_discrete: bool = False
+    context_discrete_dimension:int = 0
 
 
 @dataclass

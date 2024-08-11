@@ -15,7 +15,7 @@ from markov_bridges.data.graphs_dataloader import GraphDataloader
 from markov_bridges.models.pipelines.pipeline_cmb import CMBPipeline
 from markov_bridges.models.metrics.optimal_transport import OTPlanSampler
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
-from markov_bridges.data.music_dataloaders import LankhPianoRollDataloader
+from markov_bridges.data.sequences.music_dataloaders import LankhPianoRollDataloader
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 from markov_bridges.models.deprecated.generative_models.cmb_forward import MixedForwardMap
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig

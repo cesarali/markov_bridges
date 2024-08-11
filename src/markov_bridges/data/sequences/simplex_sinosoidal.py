@@ -103,9 +103,9 @@ class SinusoidalDataloader(MarkovBridgeDataloader):
         test_data = self.get_data_divisions(test_data,self.music_config)
         test_data = MarkovBridgeDataset(test_data)
 
-
         self.train_dataloader = DataLoader(train_data, batch_size=self.music_config.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_data,batch_size=self.music_config.batch_size, shuffle=True)
+        self.validation_dataloader = self.test_dataloader
 
     def get_target_data(self,data_config:SinusoidalConfig):
         """

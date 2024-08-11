@@ -188,8 +188,6 @@ class CJBTrainer(Trainer):
     def test_step(self,databatch:MarkovBridgeDataNameTuple, number_of_test_step,epoch):
         with torch.no_grad():
             conditional_dimension = self.config.data.context_discrete_dimension
-            join_context = lambda context_discrete,data_discrete : torch.cat([context_discrete,data_discrete],dim=1)
-            remove_context = lambda full_data_discrete : full_data_discrete[:,conditional_dimension:]
 
             # data pair and time sample
             target_discrete, source_discrete = self.generative_model.sample_pair(databatch,self.device)

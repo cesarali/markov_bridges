@@ -12,11 +12,11 @@ from torch.nn.functional import softmax
 from markov_bridges.utils.experiment_files import ExperimentFiles
 
 from markov_bridges.data.dataloaders_utils import get_dataloaders
-from markov_bridges.data.qm9_points_dataloader import QM9PointDataloader
+from markov_bridges.data.qm9.qm9_points_dataloader import QM9PointDataloader
 from markov_bridges.models.pipelines.pipeline_cmb import CMBPipeline
 
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
-from markov_bridges.models.generative_models.edmg_noising import EquivariantDiffussionNoising
+from markov_bridges.models.deprecated.generative_models.edmg_noising import EquivariantDiffussionNoising
 from markov_bridges.configs.config_classes.generative_models.edmg_config import EDMGConfig
 
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple

@@ -10,6 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 from collections import namedtuple
 from typing import List
+from abc import ABC,abstractmethod
 
 MarkovBridgeDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous time")
 
@@ -96,7 +97,7 @@ class MarkovBridgeDataset(Dataset):
         databatch = self.DatabatchNameTuple(*data_fields)
         return databatch
 
-class MarkovBridgeDataloader:
+class MarkovBridgeDataloader(ABC):
     """
     This is the abstract dataloader class for the markov bridge models including:
 
@@ -144,15 +145,15 @@ class MarkovBridgeDataloader:
             self.continuos_dimensions = config.continuos_dimensions
             self.batch_size = config.batch_size
     
+    def get_databach_keys(self):
+        return None
+    
     def get_source_data(self):
         return None
     
     def get_target_data(self):
         return None
-    
-    def join_context(databatch:MarkovBridgeDataNameTuple, discrete_data=None, continuous_data=None):
-        return None
-    
+        
     def get_data_divisions(self)->MarkovBridgeDataClass:
         """
         This class is supposed to organize the data in the different elements once 

@@ -54,7 +54,6 @@ def get_optim(args, generative_model):
         generative_model.parameters(),
         lr=args.lr, amsgrad=True,
         weight_decay=1e-12)
-
     return optim
 
 

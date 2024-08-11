@@ -22,7 +22,6 @@ class MixedForwardMap(EMA,nn.Module):
     """
     def __init__(self, config:CMBConfig,device):
         """
-        join_context(context_discrete,discrete_data,context_continuous,continuuous_data)->full_discrete,full_continuous: 
         this function should allow us to create a full discrete and continuous vector from the context and data
 
         """

@@ -1,14 +1,12 @@
 import torch
 
-
 def compute_mean_mad(dataloaders, properties, dataset_name):
     if dataset_name == 'qm9':
-        return compute_mean_mad_from_dataloader(dataloaders['train'], properties)
+        return compute_mean_mad_from_dataloader(dataloaders.train(), properties)
     elif dataset_name == 'qm9_second_half' or dataset_name == 'qm9_second_half':
-        return compute_mean_mad_from_dataloader(dataloaders['valid'], properties)
+        return compute_mean_mad_from_dataloader(dataloaders.validation(), properties)
     else:
         raise Exception('Wrong dataset name')
-
 
 def compute_mean_mad_from_dataloader(dataloader, properties):
     property_norms = {}
