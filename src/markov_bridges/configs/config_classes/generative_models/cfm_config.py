@@ -55,7 +55,7 @@ class CFMConfig:
     # training
     trainer: CFMTrainerConfig = field(default_factory=CFMTrainerConfig)#lp
     #pipeline
-    pipeline: CFMPipelineConfig = field(default_factory=CFMPipelineConfig(num_intermediates=None))#lp
+    pipeline: CFMPipelineConfig = field(default_factory=lambda: CFMPipelineConfig(num_intermediates=None))#lp
 
     def __post_init__(self):
         if isinstance(self.data, dict):

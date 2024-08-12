@@ -140,7 +140,7 @@ class EDMGConfig:
     trainer: EDMGTrainerConfig = field(default_factory=EDMGTrainerConfig) #lp
     #pipeline
     #pipeline : BasicPipelineConfig = BasicPipelineConfig(num_intermediates=None)
-    pipeline : BasicPipelineConfig = field(default_factory=BasicPipelineConfig(num_intermediates=None))
+    pipeline : BasicPipelineConfig = field(default_factory=lambda: BasicPipelineConfig(num_intermediates=None)) #lp
 
     def __post_init__(self):
         if isinstance(self.data,dict):

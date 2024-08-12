@@ -79,7 +79,7 @@ class CMBConfig:
     # training
     trainer: CMBTrainerConfig = field(default_factory=CMBTrainerConfig)#lp
     #pipeline
-    pipeline : CMBPipelineConfig = field(default_factory=CMBPipelineConfig(num_intermediates=None))#lp
+    pipeline : CMBPipelineConfig = field(default_factory=lambda: CMBPipelineConfig(num_intermediates=None))#lp
 
     def __post_init__(self):
         if isinstance(self.data,dict):
