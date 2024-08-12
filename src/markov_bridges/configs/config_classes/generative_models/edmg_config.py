@@ -42,6 +42,7 @@ class NoisingModelConfig:
     normalization_factor: float = 1
     aggregation_method: str = 'sum'
 
+    ema_decay:float = 0.999
     # noising parameters
     condition_time:bool = True
     probabilistic_model: str = 'diffusion'         # 'flow | diffusion | diffusion_ddpm'

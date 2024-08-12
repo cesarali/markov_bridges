@@ -4,7 +4,7 @@ from markov_bridges.models.networks.temporal.edmg.egnn_dynamics import EGNN_dyna
 from markov_bridges.models.networks.temporal.edmg.en_diffusion import EnVariationalDiffusion
 from markov_bridges.models.networks.temporal.edmg.helper_distributions import DistributionNodes,DistributionProperty
 
-def get_edmg_model(config:EDMGConfig, dataset_info, dataloader_train, device):
+def get_edmg_model(config:EDMGConfig, dataset_info, dataloader_train, device=None):
     histogram = dataset_info['n_nodes']
     in_node_nf = len(dataset_info['atom_decoder']) + int(config.data.include_charges)
     nodes_dist = DistributionNodes(histogram)

@@ -84,7 +84,7 @@ class AbstractGenerativeModelL(ABC):
     def train(self):
         trainer = self.get_trainer()
         trainer.fit(self.model, 
-                    self.dataloader.train_dataloader, 
-                    self.dataloader.validation_dataloader)
+                    self.dataloader.train(), 
+                    self.dataloader.validation())
         all_metrics = self.test_evaluation()
         return all_metrics

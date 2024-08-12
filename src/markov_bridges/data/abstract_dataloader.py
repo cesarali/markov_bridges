@@ -12,6 +12,7 @@ from collections import namedtuple
 from typing import List
 from abc import ABC,abstractmethod
 
+#MarkovBridgeDataNameTuple is the named tuple with all possible datavalues, but this changes for each dataset
 MarkovBridgeDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous time")
 
 def create_databatch_nametuple(data):
@@ -110,7 +111,8 @@ class MarkovBridgeDataloader(ABC):
     ALL DATA SHOULD BE STORE IN SHAPE
     [data_size,dimensions]
 
-    the function transform_to_native_shape should transform the shape to wat is needed 
+    The function transform_to_native_shape should transform the shape to what is needed
+    for postprocessing
 
     The MarkovBridgeDataset uses MarkovBridgeDataClass as a way of storing the whole data
     this deafults to None the non provided aspects of the data.
@@ -122,9 +124,6 @@ class MarkovBridgeDataloader(ABC):
 
     This behavior is different from the MarkovBridgeDataClass who defaults to None for 
     the things not provided.
-
-    MarkovBridgeDataNameTuple is the named tuple with all possible datavalues, but this changes 
-    for each dataset.
 
     source denotes the distribution at time = 0 
     target denotes the distribution at time = 1
