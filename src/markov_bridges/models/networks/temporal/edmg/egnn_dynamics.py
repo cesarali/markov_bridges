@@ -48,14 +48,14 @@ class EGNN_dynamics_QM9(nn.Module):
     def _forward(self, t, xh, node_mask, edge_mask, context):
         bs, n_nodes, dims = xh.shape
         h_dims = dims - self.n_dims
-        edges = self.get_adj_matrix(n_nodes, bs, context.device)
-        edges = [x.to(context.device) for x in edges]
+        edges = self.get_adj_matrix(n_nodes, bs, t.device)
+        edges = [x.to(t.device) for x in edges]
         node_mask = node_mask.view(bs*n_nodes, 1)
         edge_mask = edge_mask.view(bs*n_nodes*n_nodes, 1)
         xh = xh.view(bs*n_nodes, -1).clone() * node_mask
         x = xh[:, 0:self.n_dims].clone()
         if h_dims == 0:
-            h = torch.ones(bs*n_nodes, 1).to(context.device)
+            h = torch.ones(bs*n_nodes, 1).to(t.device)
         else:
             h = xh[:, self.n_dims:].clone()
 

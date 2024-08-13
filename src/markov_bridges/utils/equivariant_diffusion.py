@@ -20,6 +20,8 @@ def remove_mean_with_mask(x, node_mask):
     x = x - mean * node_mask
     return x
 
+def reverse_tensor(x):
+    return x[torch.arange(x.size(0) - 1, -1, -1)]
 
 def assert_mean_zero(x):
     mean = torch.mean(x, dim=1, keepdim=True)

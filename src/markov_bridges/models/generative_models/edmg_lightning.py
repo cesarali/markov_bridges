@@ -15,6 +15,18 @@ from markov_bridges.configs.config_classes.generative_models.edmg_config import 
 from markov_bridges.models.pipelines.pipeline_edmg import EDGMPipeline
 from markov_bridges.utils.experiment_files import ExperimentFiles
 from markov_bridges.data.qm9.qm9_points_dataloader import QM9PointDataloader
+from markov_bridges.models.networks.temporal.edmg.helper_distributions import (
+    DistributionNodes,
+    DistributionProperty
+)
+
+from markov_bridges.models.networks.temporal.edmg.en_diffusion import EnVariationalDiffusion
+
+from markov_bridges.models.pipelines.pipeline_edmg import (
+    save_and_sample_chain,
+    sample_different_sizes_and_save,
+    save_and_sample_conditional
+)
 
 # loaders
 from markov_bridges.data.dataloaders_utils import get_dataloaders
@@ -34,6 +46,7 @@ from markov_bridges.utils.equivariant_diffusion import (
 
 from markov_bridges.data.qm9.utils import prepare_context
 
+
 def sum_except_batch(x):
     return x.view(x.size(0), -1).sum(dim=-1)
 
@@ -51,6 +64,10 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
     sample and train a Mixed Variable Bridge
 
     """
+    noising_model:EnVariationalDiffusion 
+    nodes_dist:DistributionNodes
+    prop_dist:DistributionProperty
+
     def __init__(self,config:EDMGConfig,dataloader:QM9PointDataloader):
         """
         this function should allow us to create a full discrete and continuous vector from the context and data
@@ -230,10 +247,14 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
 
         return optimizer
 
+
 class EDGML(AbstractGenerativeModelL):
 
     config_type = EDMGConfig
-
+    model:EquivariantDiffussionNoisingL=None
+    dataloader:QM9PointDataloader=None
+    pipeline:EDGMPipeline=None
+    
     def define_from_config(self,config:EDMGConfig):
         self.config = config
         self.dataloader = get_dataloaders(self.config)
@@ -258,5 +279,11 @@ class EDGML(AbstractGenerativeModelL):
         return self.config
 
     def test_evaluation(self) -> dict:
-        pass
+        if len(self.config.noising_model.conditioning) > 0:
+                save_and_sample_conditional(args, device, model_ema, prop_dist, dataset_info, epoch=epoch)
+        save_and_sample_chain(model_ema, args, device, dataset_info, prop_dist, epoch=epoch,
+                                batch_id=str(i))
+        sample_different_sizes_and_save(model_ema, nodes_dist, args, device, dataset_info,
+                                        prop_dist, epoch=epoch)
+        
     

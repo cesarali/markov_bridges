@@ -49,7 +49,6 @@ def get_edmg_model(config:EDMGConfig, dataset_info, dataloader_train, device=Non
             include_charges=config.data.include_charges
             )
         return vdm,nodes_dist, prop_dist
-
     else:
         raise ValueError(config.noising_model.probabilistic_model)
     

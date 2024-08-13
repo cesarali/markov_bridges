@@ -78,7 +78,6 @@ class QM9PointDataloader(MarkovBridgeDataloader):
         data_dummy = self.get_databatch()
         if len(self.conditioning) > 0:
             print(f'Conditioning on {self.conditioning}')
-
             self.property_norms = compute_mean_mad(self, 
                                                    self.conditioning, 
                                                    self.qm9_config.dataset)
@@ -86,6 +85,6 @@ class QM9PointDataloader(MarkovBridgeDataloader):
             context_node_nf = context_dummy.size(2)
         else:
             context_node_nf = 0
-            property_norms = None
+            self.property_norms = None
         return context_node_nf
         
