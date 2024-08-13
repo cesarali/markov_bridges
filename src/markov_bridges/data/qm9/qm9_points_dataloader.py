@@ -35,6 +35,21 @@ from markov_bridges.data.qm9.utils import prepare_context, compute_mean_mad
 QM9PointDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous nodes_dist node_mask edge_mask time")
 
 class QM9PointDataloader(MarkovBridgeDataloader):
+    """
+    
+    The .get_databatch() function returns a dictionary for 32 molecules (batch size = 32). If for example the biggest molecule in the batch has 23 total atoms (heavy + hydrogens), all molecules are padded to reach 23 atoms. 
+    Padded atoms can be recognized by the "charges" tensor where they have 0, by the "one_hot" where they have all False, and by the "atom_mask".
+
+    The dictionary has the following relevant keys:
+
+        num_atoms : number of TOTAL atoms (heavy + hydrogens). SHAPE: [32]
+        charges : this is indeeed the ATOMIC NUMBER, from which we can retrieve the atom type. 0 is for padded atoms. SHAPE: [32, 23, 1]
+        positions : 3d coordinates of each atom. SHAPE: [32, 23, 3] == [N molecules, N atoms per mol (after padding), 3]
+        index: maybe is the number (index) of the molecule in the entire dataset
+        one_hot: Bool torch tensor built upon what they call "atom_encoder" which is indeed a vocabulary. This is the bool version of the one hot encoding (instead of having [1,0,0] you have [True, False, False] for each atom; padded atom have a tensor full of False). SHAPE: [32, 23, 5] == [N molecules, N atoms per mol (after padding), len(vocabulary)]
+        atom mask: Bool torch tensor that tells which atoms for each molecule exist (True) and which are padded atoms (False). SHAPE: [32, 23]
+        edge mask: Bool torch tensor which tells what edges exist. It has shape [23*23*32 , 1], which means that each molecule is reprsented as a FC graph. The masked edges are self loops and edges that include at least one padded node.
+    """
     qm9_config : QM9Config
     name:str = "GraphDataloader"
     max_node_num:int 
