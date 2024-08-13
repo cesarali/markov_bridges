@@ -80,7 +80,7 @@ class AbstractGenerativeModelL(ABC):
                             callbacks=[checkpoint_callback_best,
                                        checkpoint_callback_last],
                             accelerator="auto",
-                            devices=self.config.trainer.devices)
+                            devices=self.config.trainer.device)
         
         return trainer
     
