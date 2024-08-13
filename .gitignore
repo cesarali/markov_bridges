@@ -72,3 +72,4 @@ src/conditional_rate_matching/models/metrics/fid_nist/models
 
 #Other
 notebooks/data/qm9_dataset_from_notebook
+LP_Data/
