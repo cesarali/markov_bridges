@@ -272,7 +272,7 @@ class ClassificationForwardRateL(EMA,L.LightningModule):
         # clip grad norm
         if self.config.trainer.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.parameters(), self.config.trainer.clip_max_norm)
-        # cambell scheduler
+        # campbell scheduler
         if self.config.trainer.warm_up > 0:
             for g in optimizer.param_groups:
                 new_lr = self.lr * np.minimum(float(self.number_of_training_step+1) / self.config.trainer.warm_up, 1.0)

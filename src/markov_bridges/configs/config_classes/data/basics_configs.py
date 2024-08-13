@@ -85,6 +85,7 @@ class GaussiansConfig(MarkovBridgeDataConfig):
     continuos_dimensions: int = 2
 
     context_discrete_dimension: int = 0
+    context_continuous_dimension: int = 0
 
     source_continuous_type: str = "gaussian"
     target_continuous_type: str = "Ngaussians"
