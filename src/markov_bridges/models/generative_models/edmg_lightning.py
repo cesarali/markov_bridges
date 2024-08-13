@@ -21,6 +21,7 @@ from markov_bridges.models.networks.temporal.edmg.helper_distributions import (
 )
 
 from markov_bridges.models.networks.temporal.edmg.en_diffusion import EnVariationalDiffusion
+from markov_bridges.utils.shapes import nodes_and_edges_masks
 
 from markov_bridges.models.pipelines.pipeline_edmg import (
     save_and_sample_chain,
@@ -71,16 +72,18 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
     def __init__(self,config:EDMGConfig,dataloader:QM9PointDataloader):
         """
         this function should allow us to create a full discrete and continuous vector from the context and data
-
         """
         EMA.__init__(self,config)
         L.LightningModule.__init__(self)
+        self.automatic_optimization = False
 
+        # different config
         self.config = config
         self.data_config =  config.data
         self.noising_config = config.noising_model
-        self.automatic_optimization = False
 
+        # dataset information for sampling
+        self.dataset_info = dataloader.dataset_info
         self.property_norms = dataloader.property_norms
         self.conditioning = self.noising_config.conditioning
         self.DatabatchNameTuple = namedtuple("DatabatchClass", dataloader.get_databach_keys())
@@ -93,6 +96,8 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
         self.noising_model,self.nodes_dist, self.prop_dist = get_edmg_model(config,
                                                                             dataloader.dataset_info,
                                                                             dataloader.train())
+        if self.prop_dist is not None:
+            self.prop_dist.set_normalizer(self.property_norms)
         
     def define_bridge_parameters(self,config):
         pass
@@ -101,6 +106,24 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
     #====================================================================
     def forward_map(self,discrete_sample,continuous_sample,time):
         return None
+    
+    def sample_sizes_and_masks(self,sample_size,device,context=None):
+        max_n_nodes = self.dataset_info['max_n_nodes']
+        nodesxsample = self.nodes_dist.sample(sample_size)
+
+        node_mask,edge_mask= nodes_and_edges_masks(nodesxsample,max_n_nodes,device)
+        batch_size = node_mask.size(0)
+        
+        # TODO FIX: This conditioning just zeros.
+        if self.config.noising_model.context_node_nf > 0:
+            if context is None:
+                context = self.prop_dist.sample_batch(nodesxsample)
+            context = context.unsqueeze(1).repeat(1, max_n_nodes, 1).to(device) * node_mask
+        else:
+            context = None
+
+        return max_n_nodes,nodesxsample,node_mask,edge_mask,context
+    
     #====================================================================
     # TRAINING
     #====================================================================
@@ -277,13 +300,12 @@ class EDGML(AbstractGenerativeModelL):
         self.model = EquivariantDiffussionNoisingL.load_from_checkpoint(CKPT_PATH, config=self.config)
         self.pipeline = EDGMPipeline(self.config,self.model,self.dataloader)
         return self.config
-
+    
     def test_evaluation(self) -> dict:
-        if len(self.config.noising_model.conditioning) > 0:
-                save_and_sample_conditional(args, device, model_ema, prop_dist, dataset_info, epoch=epoch)
-        save_and_sample_chain(model_ema, args, device, dataset_info, prop_dist, epoch=epoch,
-                                batch_id=str(i))
-        sample_different_sizes_and_save(model_ema, nodes_dist, args, device, dataset_info,
-                                        prop_dist, epoch=epoch)
+        return {}
+        #if len(self.config.noising_model.conditioning) > 0:
+        #        save_and_sample_conditional(self.pipeline,epoch=1000)
+        #save_and_sample_chain(self.pipeline,epoch=epoch,batch_id=str(i))
+        #sample_different_sizes_and_save(self.pipeline, epoch=epoch)
         
     

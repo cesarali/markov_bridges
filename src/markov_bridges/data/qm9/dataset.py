@@ -18,7 +18,7 @@ def retrieve_dataloaders(cfg:QM9Config):
                                                                     subtract_thermo=cfg.subtract_thermo,
                                                                     force_download=cfg.force_download,
                                                                     remove_h=cfg.remove_h,
-                                                                    num_pts_train= cfg.num_pts_train,
+                                                                    num_pts_train=cfg.num_pts_train,
                                                                     num_pts_valid=cfg.num_pts_valid,
                                                                     num_pts_test=cfg.num_pts_test)
     
@@ -46,7 +46,7 @@ def retrieve_dataloaders(cfg:QM9Config):
                                      num_workers=num_workers,
                                      collate_fn=preprocess.collate_fn)
                             for split, dataset in datasets.items()}
-        
+    
     return keys,dataloaders, charge_scale
 
 def filter_atoms(datasets, n_nodes):

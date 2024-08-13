@@ -14,7 +14,8 @@ if __name__=="__main__":
     config.data = QM9Config(num_pts_train=1000,
                             num_pts_test=200,
                             num_pts_valid=200)    
-    config.noising_model = NoisingModelConfig(n_layers=2)
+    config.noising_model = NoisingModelConfig(n_layers=1,
+                                              conditioning=['H_thermo', 'homo'])
     # conditioning=['H_thermo', 'homo']
 
     config.trainer.metrics = []
@@ -23,6 +24,6 @@ if __name__=="__main__":
                                        experiment_indentifier="lightning_test9",
                                        delete=True)
     edmg = EDGML(config)
-
-    one_hot, charges, x = edmg.pipeline.sample_chain(n_tries=1)
+    one_hot, charges, x,node_mask = edmg.pipeline.sample(sample_size=10)
+    print(one_hot.shape)
     

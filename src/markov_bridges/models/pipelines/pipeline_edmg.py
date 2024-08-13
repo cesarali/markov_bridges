@@ -22,7 +22,8 @@ from markov_bridges.utils.equivariant_diffusion import (
     reverse_tensor
 )
 from markov_bridges.data.qm9.analyze import check_stability
-        
+from markov_bridges.utils.shapes import nodes_and_edges_masks
+
 class EDGMPipeline(AbstractPipeline):
     """
     This is a wrapper for the stochastic process sampler TauDiffusion, will generate samples
@@ -72,7 +73,6 @@ class EDGMPipeline(AbstractPipeline):
             self,
             n_tries, 
         ):
-
         flow = self.noising_model
         device = check_model_devices(flow)
         dataset_info = self.dataset_info
@@ -129,7 +129,7 @@ class EDGMPipeline(AbstractPipeline):
 
     def sample(
             self,
-            nodesxsample=torch.tensor([10]), 
+            sample_size=2, 
             context=None,
             fix_noise=False
         ):
@@ -139,21 +139,11 @@ class EDGMPipeline(AbstractPipeline):
         prop_dist = self.prop_dist
 
         max_n_nodes = dataset_info['max_n_nodes']  # this is the maximum node_size in QM9
+        nodesxsample = self.nodes_dist.sample(sample_size)
 
-        assert int(torch.max(nodesxsample)) <= max_n_nodes
-        batch_size = len(nodesxsample)
-
-        node_mask = torch.zeros(batch_size, max_n_nodes)
-        for i in range(batch_size):
-            node_mask[i, 0:nodesxsample[i]] = 1
-
-        # Compute edge_mask
-        edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
-        diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
-        edge_mask *= diag_mask
-        edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(device)
-        node_mask = node_mask.unsqueeze(2).to(device)
-
+        node_mask,edge_mask= nodes_and_edges_masks(nodesxsample,max_n_nodes,device)
+        batch_size = node_mask.size(0)
+        
         # TODO FIX: This conditioning just zeros.
         if self.config.noising_model.context_node_nf > 0:
             if context is None:
@@ -212,8 +202,8 @@ def save_and_sample_conditional(pipeline:EDGMPipeline, epoch=0, id_from=0):
 def sample_different_sizes_and_save(pipeline:EDGMPipeline,n_samples=5, epoch=0, batch_size=100, batch_id=''):
     batch_size = min(batch_size, n_samples)
     for counter in range(int(n_samples/batch_size)):
-        nodesxsample = pipeline.nodes_dist.sample(batch_size)
         one_hot, charges, x, node_mask = pipeline.sample(nodesxsample=nodesxsample)
         print(f"Generated molecule: Positions {x[:-1, :, :]}")
         #vis.save_xyz_file(f'outputs/{args.exp_name}/epoch_{epoch}_{batch_id}/', one_hot, charges, x, dataset_info,
         #                  batch_size * counter, name='molecule')
+    return one_hot, charges, x, node_mask

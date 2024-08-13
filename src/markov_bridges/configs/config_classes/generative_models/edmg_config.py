@@ -26,8 +26,6 @@ from markov_bridges.configs.config_classes.trainers.trainer_config import EDMGTr
 image_data_path = os.path.join(data_path,"raw")
 
 
-
-
 @dataclass
 class NoisingModelConfig:
     # egnn dynammics

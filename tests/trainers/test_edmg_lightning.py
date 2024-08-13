@@ -12,10 +12,9 @@ if __name__=="__main__":
     model_config.data = QM9Config(num_pts_train=1000,
                                   num_pts_test=200,
                                   num_pts_valid=200)
-    model_config.noising_model = NoisingModelConfig(n_layers=2,
+    model_config.noising_model = NoisingModelConfig(n_layers=1,
                                                     conditioning=['H_thermo', 'homo'])
     model_config.trainer = EDMGTrainerConfig(number_of_epochs=200,
-                                             debug=True,
                                              learning_rate=1e-4)
     model_config.trainer.metrics = []
     experiment_files = ExperimentFiles(experiment_name="cjb",

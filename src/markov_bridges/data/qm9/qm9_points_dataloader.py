@@ -1,4 +1,4 @@
-
+from pathlib import Path
 import os
 import torch
 import pickle
@@ -35,6 +35,7 @@ from markov_bridges.data.qm9.utils import prepare_context, compute_mean_mad
 QM9PointDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous nodes_dist node_mask edge_mask time")
 
 class QM9PointDataloader(MarkovBridgeDataloader):
+    
     qm9_config : QM9Config
     name:str = "QM9PointDataloader"
     max_node_num:int 
@@ -74,8 +75,14 @@ class QM9PointDataloader(MarkovBridgeDataloader):
         return self.dataloaders["valid"]
     
     def get_context_node_nf(self):
+        datadir_path = Path(self.qm9_config.datadir) / self.qm9_config.dataset
+        dummy_path = datadir_path / "dummy_batch.tr"
         #==================================================
-        data_dummy = self.get_databatch()
+        if os.path.exists(dummy_path):
+            data_dummy = torch.load(dummy_path)
+        else:
+            data_dummy = self.get_databatch()
+            torch.save(data_dummy,dummy_path)
         if len(self.conditioning) > 0:
             print(f'Conditioning on {self.conditioning}')
             self.property_norms = compute_mean_mad(self, 
