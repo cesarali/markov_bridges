@@ -5,7 +5,7 @@ from markov_bridges.configs.config_classes.networks.continuous_network_config im
 from markov_bridges.models.networks.temporal.cfm.mlp import DeepMLP
 
 
-def load_continuous_network(config: CFMConfig, device):
+def load_continuous_network(config: CFMConfig, device=None):
     if isinstance(config.continuous_network, DeepMLPConfig):
         continuous_network = DeepMLP(config,device)
     else:

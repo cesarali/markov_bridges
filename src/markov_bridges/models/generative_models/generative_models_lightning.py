@@ -77,7 +77,9 @@ class AbstractGenerativeModelL(ABC):
         trainer = L.Trainer(default_root_dir=self.experiment_files.experiment_dir,
                             max_epochs=self.config.trainer.number_of_epochs,
                             callbacks=[checkpoint_callback_best,
-                                       checkpoint_callback_last])
+                                       checkpoint_callback_last],
+                            accelerator="auto",
+                            devices=self.config.trainer.devices)
         
         return trainer
     
@@ -86,5 +88,7 @@ class AbstractGenerativeModelL(ABC):
         trainer.fit(self.model, 
                     self.dataloader.train_dataloader, 
                     self.dataloader.validation_dataloader)
-        all_metrics = self.test_evaluation()
+       
+        all_metrics = self.test_evaluation() if len(self.config.trainer.metrics) else None
+
         return all_metrics
