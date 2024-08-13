@@ -20,6 +20,8 @@ def remove_mean_with_mask(x, node_mask):
     x = x - mean * node_mask
     return x
 
+def reverse_tensor(x):
+    return x[torch.arange(x.size(0) - 1, -1, -1)]
 
 def assert_mean_zero(x):
     mean = torch.mean(x, dim=1, keepdim=True)
@@ -142,7 +144,6 @@ class Queue():
     def std(self):
         return np.std(self.items)
 
-
 def gradient_clipping(flow, gradnorm_queue):
     # Allow gradient norm to be 150% + 2 * stdev of the recent history.
     max_grad_norm = 1.5 * gradnorm_queue.mean() + 2 * gradnorm_queue.std()
@@ -158,9 +159,8 @@ def gradient_clipping(flow, gradnorm_queue):
 
     if float(grad_norm) > max_grad_norm:
         print(f'Clipped gradient with value {grad_norm:.1f} '
-              f'while allowed {max_grad_norm:.1f}')
+            f'while allowed {max_grad_norm:.1f}')
     return grad_norm
-
 
 # Rotation data augmntation
 def random_rotation(x):

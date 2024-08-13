@@ -36,7 +36,7 @@ QM9PointDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_con
 
 class QM9PointDataloader(MarkovBridgeDataloader):
     qm9_config : QM9Config
-    name:str = "GraphDataloader"
+    name:str = "QM9PointDataloader"
     max_node_num:int 
     expected_shape:List[int]
 
@@ -58,6 +58,8 @@ class QM9PointDataloader(MarkovBridgeDataloader):
         Creates the dataloaders
         """
         self.keys,self.dataloaders, self.charge_scale = retrieve_dataloaders(self.qm9_config)
+        self.keys.extend(['one_hot', 'atom_mask', 'edge_mask'])
+        
         self.dataset_info = get_dataset_info(self.qm9_config.dataset,self.qm9_config.remove_h)
         context_node_nf = self.get_context_node_nf()
         config.noising_model.context_node_nf = context_node_nf
@@ -76,7 +78,6 @@ class QM9PointDataloader(MarkovBridgeDataloader):
         data_dummy = self.get_databatch()
         if len(self.conditioning) > 0:
             print(f'Conditioning on {self.conditioning}')
-
             self.property_norms = compute_mean_mad(self, 
                                                    self.conditioning, 
                                                    self.qm9_config.dataset)
@@ -84,6 +85,6 @@ class QM9PointDataloader(MarkovBridgeDataloader):
             context_node_nf = context_dummy.size(2)
         else:
             context_node_nf = 0
-            property_norms = None
+            self.property_norms = None
         return context_node_nf
         

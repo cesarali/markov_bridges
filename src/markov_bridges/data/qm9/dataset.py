@@ -41,10 +41,10 @@ def retrieve_dataloaders(cfg:QM9Config):
     # Construct PyTorch dataloaders from datasets
     preprocess = PreprocessQM9(load_charges=cfg.include_charges)
     dataloaders = {split: DataLoader(dataset,
-                                        batch_size=batch_size,
-                                        shuffle=args.shuffle if (split == 'train') else False,
-                                        num_workers=num_workers,
-                                        collate_fn=preprocess.collate_fn)
+                                     batch_size=batch_size,
+                                     shuffle=args.shuffle if (split == 'train') else False,
+                                     num_workers=num_workers,
+                                     collate_fn=preprocess.collate_fn)
                             for split, dataset in datasets.items()}
         
     return keys,dataloaders, charge_scale

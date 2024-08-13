@@ -32,7 +32,7 @@ class CJBPipeline(AbstractPipeline):
         """
         From an initial sample of databatch samples the data
 
-        return_origin: deprecated
+        return_origin: deprecated 
         """
         databatch = nametuple_to_device(databatch,self.device)
         state = self.sampler.sample(self.rate_model,databatch,return_path=return_path)

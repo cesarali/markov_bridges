@@ -1,20 +1,39 @@
+# general
+from collections import namedtuple
+import lightning as L
+
+# torch 
 import torch
 from torch import nn
-
 from dataclasses import dataclass,asdict,field
 from torch.distributions import Categorical,Normal,Dirichlet
-import markov_bridges.data.qm9.utils as qm9utils
+
+# EDMG model
 from markov_bridges.models.networks.utils.ema import EMA
-from markov_bridges.models.pipelines.thermostat_utils import load_thermostat
+from markov_bridges.models.generative_models.generative_models_lightning import AbstractGenerativeModelL
 from markov_bridges.configs.config_classes.generative_models.edmg_config import EDMGConfig
+from markov_bridges.models.pipelines.pipeline_edmg import EDGMPipeline
+from markov_bridges.utils.experiment_files import ExperimentFiles
+from markov_bridges.data.qm9.qm9_points_dataloader import QM9PointDataloader
+from markov_bridges.models.networks.temporal.edmg.helper_distributions import (
+    DistributionNodes,
+    DistributionProperty
+)
 
-from torch.nn.functional import softmax
-from markov_bridges.utils.shapes import right_shape,right_time_size,where_to_go_x
-from markov_bridges.models.pipelines.thermostats import Thermostat
-from markov_bridges.models.networks.temporal.mixed.mixed_networks_utils import load_mixed_network
-from markov_bridges.data.qm9.qm9_points_dataloader import QM9PointDataNameTuple
-from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
+from markov_bridges.models.networks.temporal.edmg.en_diffusion import EnVariationalDiffusion
 
+from markov_bridges.models.pipelines.pipeline_edmg import (
+    save_and_sample_chain,
+    sample_different_sizes_and_save,
+    save_and_sample_conditional
+)
+
+# loaders
+from markov_bridges.data.dataloaders_utils import get_dataloaders
+from markov_bridges.models.networks.temporal.edmg.edmg_utils import get_edmg_model
+
+# data
+from torch.optim import Adam
 
 from markov_bridges.utils.equivariant_diffusion import (
     assert_mean_zero_with_mask, 
@@ -22,11 +41,11 @@ from markov_bridges.utils.equivariant_diffusion import (
     assert_correctly_masked, 
     sample_center_gravity_zero_gaussian_with_mask,
     random_rotation,
-    gradient_clipping,
     Queue
 )
 
-from markov_bridges.data.qm9.utils import prepare_context, compute_mean_mad
+from markov_bridges.data.qm9.utils import prepare_context
+
 
 def sum_except_batch(x):
     return x.view(x.size(0), -1).sum(dim=-1)
@@ -39,66 +58,51 @@ def check_mask_correct(variables, node_mask):
         if len(variable) > 0:
             assert_correctly_masked(variable, node_mask)
 
-class EquivariantDiffussionNoisingL(EMA,nn.Module):
+class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
     """
     This corresponds to the torch module which contains all the elements requiered to 
     sample and train a Mixed Variable Bridge
 
     """
-    def __init__(self, config:EDMGConfig,device,join_context=None):
+    noising_model:EnVariationalDiffusion 
+    nodes_dist:DistributionNodes
+    prop_dist:DistributionProperty
+
+    def __init__(self,config:EDMGConfig,dataloader:QM9PointDataloader):
         """
         this function should allow us to create a full discrete and continuous vector from the context and data
 
         """
         EMA.__init__(self,config)
-        nn.Module.__init__(self)
+        L.LightningModule.__init__(self)
 
         self.config = config
-        config_data = config.data
-        
+        self.data_config =  config.data
         self.noising_config = config.noising_model
-        self.data_config = config_data
+        self.automatic_optimization = False
 
-        self.vocab_size = config_data.vocab_size
+        self.property_norms = dataloader.property_norms
+        self.conditioning = self.noising_config.conditioning
+        self.DatabatchNameTuple = namedtuple("DatabatchClass", dataloader.get_databach_keys())
 
-        self.has_target_discrete = config_data.has_target_discrete 
-        self.has_target_continuous = config_data.has_target_continuous 
-
-        self.continuos_dimensions = config_data.continuos_dimensions
-        self.discrete_dimensions = config_data.discrete_dimensions
-    
-        self.context_discrete_dimension = config_data.context_discrete_dimension
-        self.context_continuous_dimension = config_data.context_continuous_dimension
-
-        self.define_deep_models(config,device)
+        self.define_deep_models(config,dataloader)
         self.define_bridge_parameters(config)
-        
-        self.nodes_dist = Normal(0.,1.)
-
-        self.device = device
-        self.to(device)
         self.init_ema()
 
-    def to(self,device):
-        self.device = device 
-        return super().to(device)
-
-    def define_deep_models(self,config,device):
-        self.mixed_network = load_mixed_network(config,device=device)
+    def define_deep_models(self,config,dataloader:QM9PointDataloader):
+        self.noising_model,self.nodes_dist, self.prop_dist = get_edmg_model(config,
+                                                                            dataloader.dataset_info,
+                                                                            dataloader.train())
         
     def define_bridge_parameters(self,config):
-        self.discrete_bridge_:Thermostat = load_thermostat(config)
-        self.continuous_bridge_ = None
-            
+        pass
     #====================================================================
     # RATES AND DRIFT for GENERATION
     #====================================================================
-    
     def forward_map(self,discrete_sample,continuous_sample,time):
         return None
-    
     #====================================================================
-    # LOSS
+    # TRAINING
     #====================================================================
     def loss(self,x, h, node_mask, edge_mask, context):
         """
@@ -111,10 +115,8 @@ class EquivariantDiffussionNoisingL(EMA,nn.Module):
 
         # Here x is a position tensor, and h is a dictionary with keys
         # 'categorical' and 'integer'.
-        nll = self.mixed_network(x, h, node_mask, edge_mask, context)
-
+        nll = self.noising_model(x, h, node_mask, edge_mask, context)
         N = node_mask.squeeze(2).sum(1).long()
-
         log_pN = self.nodes_dist.log_prob(N)
 
         assert nll.size() == log_pN.size()
@@ -122,19 +124,14 @@ class EquivariantDiffussionNoisingL(EMA,nn.Module):
 
         # Average over batch.
         nll = nll.mean(0)
-
         reg_term = torch.tensor([0.]).to(nll.device)
         mean_abs_z = 0.
 
         return nll, reg_term, mean_abs_z
     
-    def train_step(self,databatch:MarkovBridgeDataNameTuple, number_of_training_step,  epoch):
-        x = databatch['positions'].to(self.device, self.dtype)
-        node_mask = databatch['atom_mask'].to(self.device, self.dtype).unsqueeze(2)
-        edge_mask = databatch['edge_mask'].to(self.device, self.dtype)
-        one_hot = databatch['one_hot'].to(self.device, self.dtype)
-        charges = (databatch['charges'] if self.data_config.include_charges else torch.zeros(0)).to(self.device, self.dtype)
-
+    def augment_noise(self,x,one_hot,node_mask,charges):
+        """
+        """
         # add noise 
         x = remove_mean_with_mask(x, node_mask)
         if self.noising_config.augment_noise > 0:
@@ -147,81 +144,146 @@ class EquivariantDiffussionNoisingL(EMA,nn.Module):
 
         check_mask_correct([x, one_hot, charges], node_mask)
         assert_mean_zero_with_mask(x, node_mask)
-
         h = {'categorical': one_hot, 'integer': charges}
-
-        if len(self.noising_config.conditioning) > 0:
-            context = qm9utils.prepare_context(self.noising_config.conditioning, 
-                                               databatch, 
-                                               self.property_norms).to(self.device, self.dtype)
+        return x, h
+    
+    def training_step(self,databatch, batch_idx):
+        optimizer = self.optimizers()
+        #organize data
+        #databatch = self.DatabatchNameTuple(*batch)._asdict()
+        x = databatch['positions'].to(self.dtype)
+        node_mask = databatch['atom_mask'].to(self.dtype).unsqueeze(2)
+        edge_mask = databatch['edge_mask'].to(self.dtype)
+        one_hot = databatch['one_hot'].to(self.dtype)
+        charges = (databatch['charges'] if self.data_config.include_charges else torch.zeros(0)).to(x.device, self.dtype)
+        # noise handling
+        x,h = self.augment_noise(x,one_hot,node_mask,charges)
+        if len(self.conditioning) > 0:
+            context = prepare_context(self.conditioning, 
+                                      databatch, 
+                                      self.property_norms).to(x.device, self.dtype)
             assert_correctly_masked(context, node_mask)
         else:
             context = None
-
-        self.optimizer.zero_grad()
-
         # transform batch through flow
-        nll, reg_term, mean_abs_z = self.loss(x, 
-                                              h, 
-                                              node_mask, 
-                                              edge_mask, 
-                                              context,
-                                              self.nodes_dist)
-        
+        nll, reg_term, mean_abs_z = self.loss(x, h, node_mask,edge_mask, context)
         # standard nll from forward KL
         loss = nll + self.noising_config.ode_regularization * reg_term
-        loss.backward()
-
-        if self.config.trainer.clip_grad:
-            grad_norm = gradient_clipping(self.generative_model.noising_model, 
-                                          self.gradnorm_queue)
-        else:
-            grad_norm = 0.
-
-        self.optimizer.step()
-
+        # optimization
+        optimizer.zero_grad()
+        self.manual_backward(loss)
+        # clip grad norm
+        if self.config.trainer.clip_grad: grad_norm = self.gradient_clipping(self.gradnorm_queue) 
+        else: grad_norm = 0.
+        optimizer.step()
         # Update EMA if enabled.
-        #if args.ema_decay > 0:
-        #    ema.update_model_average(model_ema, model)
-
+        if self.do_ema:
+            self.update_ema()
+        self.log('test_loss', loss, on_epoch=True,on_step=True, prog_bar=True, logger=True)
+        return nll
+    
+    def validation_step(self,databatch, batch_idx):
+        #organize data
+        #databatch = self.DatabatchNameTuple(*batch)._asdict()
+        x = databatch['positions'].to(self.dtype)
+        node_mask = databatch['atom_mask'].to(self.dtype).unsqueeze(2)
+        edge_mask = databatch['edge_mask'].to(self.dtype)
+        one_hot = databatch['one_hot'].to(self.dtype)
+        charges = (databatch['charges'] if self.data_config.include_charges else torch.zeros(0)).to(x.device, self.dtype)
+        # noise handling
+        x,h = self.augment_noise(x,one_hot,node_mask,charges)
+        if len(self.conditioning) > 0:
+            context = prepare_context(self.conditioning, 
+                                      databatch, 
+                                      self.property_norms).to(self.device, self.dtype)
+            assert_correctly_masked(context, node_mask)
+        else:
+            context = None
+        # transform batch through flow
+        nll, reg_term, mean_abs_z = self.loss(x, h, node_mask,edge_mask, context)
+                                              
+        # standard nll from forward KL
+        loss = nll + self.noising_config.ode_regularization * reg_term
+        self.log('val_loss', loss, on_epoch=True,on_step=True, prog_bar=True, logger=True)
         return nll
 
-    def test_step(self,databatch:MarkovBridgeDataNameTuple, number_of_test_step,epoch):
-        self.generative_model.noising_model.eval()
-        with torch.no_grad():
-            x = databatch['positions'].to(self.device, self.dtype)
-            node_mask = databatch['atom_mask'].to(self.device, self.dtype).unsqueeze(2)
-            edge_mask = databatch['edge_mask'].to(self.device, self.dtype)
-            one_hot = databatch['one_hot'].to(self.device, self.dtype)
-            charges = (databatch['charges'] if self.data_config.include_charges else torch.zeros(0)).to(self.device, self.dtype)
+    def gradient_clipping(self, gradnorm_queue):
+        # Allow gradient norm to be 150% + 2 * stdev of the recent history.
+        max_grad_norm = 1.5 * gradnorm_queue.mean() + 2 * gradnorm_queue.std()
 
-            if self.noising_model_config.augment_noise > 0:
-                # Add noise eps ~ N(0, augment_noise) around points.
-                eps = sample_center_gravity_zero_gaussian_with_mask(x.size(),
-                                                                    x.device,
-                                                                    node_mask)
-                x = x + eps * self.noising_model_config.augment_noise
+        # Clips gradient and returns the norm
+        grad_norm = torch.nn.utils.clip_grad_norm_(
+            self.parameters(), max_norm=max_grad_norm, norm_type=2.0)
 
-            x = remove_mean_with_mask(x, node_mask)
-            check_mask_correct([x, one_hot, charges], node_mask)
-            assert_mean_zero_with_mask(x, node_mask)
+        if float(grad_norm) > max_grad_norm:
+            gradnorm_queue.add(float(max_grad_norm))
+        else:
+            gradnorm_queue.add(float(grad_norm))
 
-            h = {'categorical': one_hot, 'integer': charges}
+        if float(grad_norm) > max_grad_norm:
+            print(f'Clipped gradient with value {grad_norm:.1f} '
+                f'while allowed {max_grad_norm:.1f}')
+        return grad_norm
+    
+    def configure_optimizers(self):
+        """
+        Sets up the optimizer and learning rate scheduler for PyTorch Lightning.
+        The optimizer setup here is consistent with the `initialize` method.
+        """
+        self.number_of_training_step = 0
+        if self.config.trainer.do_ema:
+            self.do_ema = True
 
-            if len(self.noising_model_config.conditioning) > 0:
-                context = qm9utils.prepare_context(self.noising_model_config.conditioning, 
-                                                   databatch, 
-                                                   self.property_norms).to(self.device, self.dtype)
-                assert_correctly_masked(context, node_mask)
-            else:
-                context = None
+        #DEFINE OPTIMIZERS
+        optimizer = Adam(self.parameters(),
+                         lr=self.config.trainer.learning_rate,
+                         weight_decay=self.config.trainer.weight_decay)
+        
+        self.lr = self.config.trainer.learning_rate
 
-            # transform batch through flow
-            nll, _, _ = self.generative_model.noising_model.loss(x,
-                                                                 h, 
-                                                                 node_mask, 
-                                                                 edge_mask, 
-                                                                 context,
-                                                                 self.generative_model.nodes_dist)
+        # GRADIENT CLIPPING QUEUE
+        self.gradnorm_queue = Queue()
+        self.gradnorm_queue.add(3000)  # Add large value that will be flushed.
 
-        return nll
+        return optimizer
+
+
+class EDGML(AbstractGenerativeModelL):
+
+    config_type = EDMGConfig
+    model:EquivariantDiffussionNoisingL=None
+    dataloader:QM9PointDataloader=None
+    pipeline:EDGMPipeline=None
+    
+    def define_from_config(self,config:EDMGConfig):
+        self.config = config
+        self.dataloader = get_dataloaders(self.config)
+        self.model = EquivariantDiffussionNoisingL(self.config,self.dataloader)
+        self.pipeline = EDGMPipeline(self.config,self.model,self.dataloader)
+
+    def define_from_dir(self, experiment_dir:str|ExperimentFiles=None, checkpoint_type: str = "best"):
+        # define experiments files
+        if isinstance(experiment_dir,str):
+            self.experiment_files = ExperimentFiles(experiment_dir=experiment_dir)
+        else:
+            self.experiment_files = experiment_dir
+        # read config
+        self.config = self.read_config(self.experiment_files)
+        # obtain dataloader
+        self.dataloader = get_dataloaders(self.config,self.dataloader)
+        # obtain checkpoint path
+        CKPT_PATH = self.experiment_files.get_lightning_checkpoint_path(checkpoint_type)
+        # load model
+        self.model = EquivariantDiffussionNoisingL.load_from_checkpoint(CKPT_PATH, config=self.config)
+        self.pipeline = EDGMPipeline(self.config,self.model,self.dataloader)
+        return self.config
+
+    def test_evaluation(self) -> dict:
+        if len(self.config.noising_model.conditioning) > 0:
+                save_and_sample_conditional(args, device, model_ema, prop_dist, dataset_info, epoch=epoch)
+        save_and_sample_chain(model_ema, args, device, dataset_info, prop_dist, epoch=epoch,
+                                batch_id=str(i))
+        sample_different_sizes_and_save(model_ema, nodes_dist, args, device, dataset_info,
+                                        prop_dist, epoch=epoch)
+        
+    

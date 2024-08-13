@@ -314,7 +314,6 @@ class EnVariationalDiffusion(torch.nn.Module):
 
     def phi(self, x, t, node_mask, edge_mask, context):
         net_out = self.dynamics._forward(t, x, node_mask, edge_mask, context)
-
         return net_out
 
     def inflate_batch_array(self, array, target):

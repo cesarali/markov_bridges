@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from lightning.pytorch.callbacks import ModelCheckpoint
 from markov_bridges.utils.experiment_files import ExperimentFiles
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
+from markov_bridges.data.qm9.qm9_points_dataloader import QM9PointDataloader
 from markov_bridges.models.pipelines.abstract_pipeline import AbstractPipeline
 
 from markov_bridges.configs.config_classes.generative_models.cfm_config import CFMConfig
@@ -19,7 +20,7 @@ class AbstractGenerativeModelL(ABC):
     config:CFMConfig|CJBConfig|CMBConfig|EDMGConfig = None
     experiment_files:ExperimentFiles=None
     model:L.LightningModule=None
-    dataloader:MarkovBridgeDataloader=None
+    dataloader:MarkovBridgeDataloader|QM9PointDataloader=None
     pipeline:AbstractPipeline=None
 
     def __init__(
