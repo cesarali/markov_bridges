@@ -9,7 +9,6 @@ class BasicTrainerConfig:
     epoch:int = 0
     number_of_training_steps:int = 0
     number_of_test_step:int = 0
-    paralellize_gpu:bool = False
 
     # Scheduler-specific parameters
     scheduler:str = None # step,reduce,exponential,multi
@@ -39,11 +38,13 @@ class BasicTrainerConfig:
     weight_decay:float =  0.0001
     lr_decay:float =  0.999
 
-    device:str = "cuda:0"
+    device:str = "auto"
+    distributed: bool = False
+
     windows: bool = True
     berlin: bool = True
-    distributed: bool = False
     debug:bool = False
+
 
     metrics: List[str] = field(default_factory=lambda :["mse_histograms",
                                                         "kdmm",
