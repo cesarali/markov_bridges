@@ -130,8 +130,8 @@ class GaussiansDataloader(MarkovBridgeDataloader):
         test_data = MarkovBridgeDataset(test_data)
 
         self.fields = test_data.fields
-        self.train_dataloader = DataLoader(train_data, batch_size=self.data_config.batch_size, shuffle=True, num_workers=self.data_config.num_workers)
-        self.test_dataloader = DataLoader(test_data, batch_size=self.data_config.batch_size, shuffle=False, num_workers=self.data_config.num_workers)
+        self.train_dataloader = DataLoader(train_data, batch_size=self.data_config.batch_size, shuffle=True, num_workers=self.data_config.num_workers, pin_memory=self.data_config.pin_memory)
+        self.test_dataloader = DataLoader(test_data, batch_size=self.data_config.batch_size, shuffle=False, num_workers=self.data_config.num_workers, pin_memory=self.data_config.pin_memory)
 
     def join_context(self, databatch: MarkovBridgeDataNameTuple, discrete_data=None, continuous_data=None):
         full_continuous = databatch.context_continuous if continuous_data is None else continuous_data 
@@ -240,8 +240,8 @@ class IndependentMixDataloader(MarkovBridgeDataloader):
         self.DatabatchNameTuple = namedtuple("DatabatchClass", self.fields)
         self.data_config.fields = self.fields
 
-        self.train_dataloader = DataLoader(train_data, batch_size=self.data_config.batch_size, shuffle=True, num_workers=self.data_config.num_workers)
-        self.test_dataloader = DataLoader(test_data, batch_size=self.data_config.batch_size, shuffle=False, num_workers=self.data_config.num_workers)
+        self.train_dataloader = DataLoader(train_data, batch_size=self.data_config.batch_size, shuffle=True, num_workers=self.data_config.num_workers, pin_memory=self.data_config.pin_memory)
+        self.test_dataloader = DataLoader(test_data, batch_size=self.data_config.batch_size, shuffle=False, num_workers=self.data_config.num_workers, pin_memory=self.data_config.pin_memory)
         self.validation_dataloader = self.test_dataloader
 
     def join_context(self,databatch:MarkovBridgeDataNameTuple, discrete_data=None,continuous_data=None):
