@@ -23,25 +23,36 @@ if __name__=="__main__":
                                                 target_dirichlet=0.5,
                                                 train_data_size=60000,
                                                 test_data_size=10000)
+        
         model_config.mixed_network = MixedDeepMLPConfig(num_layers=3,
                                                         hidden_dim=128,
                                                         time_embed_dim=16,
                                                         continuous_embed_dim=16,
                                                         discrete_embed_dim=16)
-        model_config.trainer = CMBTrainerConfig(number_of_epochs=100,
+        
+        model_config.trainer = CMBTrainerConfig(number_of_epochs=10,
                                                 scheduler=None,
                                                 warm_up=0,
                                                 clip_grad=True,
                                                 learning_rate=2e-4,
                                                 metrics=[])
-        model_config.trainer.metrics = [MixedHellingerMetricConfig(plot_continuous_variables=True,
-                                                                   plot_histogram=True)]
+
+        model_config.trainer.metrics = []
+        model_config.trainer.accelerator = "gpu" 
+        model_config.trainer.devices = "auto"
+        model_config.trainer.strategy = "ddp"
+        model_config.data.num_workers = 8
+        model_config.data.pin_memory = True
+
+
         experiment_files = ExperimentFiles(experiment_name="cmb",
                                         experiment_type="independent",
-                                        experiment_indentifier="lightning_test2",
+                                        experiment_indentifier="lightning_test",
                                         delete=True)
         cmb = CMBL(model_config,experiment_files)
         cmb.train()
+
+
     else:
         experiment_files = ExperimentFiles(experiment_name="cmb",experiment_type="independent",experiment_indentifier="lightning_test",delete=False)      
         cjb = CMBL(experiment_source=experiment_files,checkpoint_type="best")

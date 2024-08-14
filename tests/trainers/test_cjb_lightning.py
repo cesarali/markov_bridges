@@ -27,10 +27,10 @@ if __name__=="__main__":
     if train:
         model_config = CJBConfig()
         model_config.data = dataset_str_to_config[dataset_name](batch_size=20)
-        model_config.temporal_network = TemporalMLPConfig(hidden_dim=150,time_embed_dim=50)
+        model_config.temporal_network = TemporalMLPConfig(hidden_dim=150, time_embed_dim=50)
         model_config.trainer = CJBTrainerConfig(
-            number_of_epochs=100,
-            learning_rate=1e-3,
+            number_of_epochs=1000,
+            learning_rate=2e-4,
             warm_up=0
         )
         model_config.pipeline =  BasicPipelineConfig(number_of_steps=200,
@@ -42,7 +42,7 @@ if __name__=="__main__":
         model_config.trainer.metrics = metrics
         experiment_files = ExperimentFiles(experiment_name="cjb",
                                            experiment_type="graph",
-                                           experiment_indentifier="lightning_test9",
+                                           experiment_indentifier="lightning_test10",
                                            delete=True)
         cjb = CJBL(model_config,experiment_files)
         cjb.train()
