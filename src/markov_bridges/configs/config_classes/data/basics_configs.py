@@ -28,6 +28,9 @@ class MarkovBridgeDataConfig:
 
     fields:list = field(default_factory=lambda:[])
 
+    num_workers: int = 0
+    pin_memory: bool = False
+
 @dataclass
 class IndependentMixConfig(MarkovBridgeDataConfig):
     name:str = "IndependentMix"
@@ -59,9 +62,7 @@ class IndependentMixConfig(MarkovBridgeDataConfig):
     test_data_size: int = 1500
 
     batch_size:int = 64
-
-    num_workers: int = 0
-
+     
     def __post_init__(self):
         if self.has_context_continuous:
             self.context_continuous_dimension = 2
@@ -99,8 +100,6 @@ class GaussiansConfig(MarkovBridgeDataConfig):
     test_data_size: int = 2000
 
     batch_size: int = 256
-    
-    num_workers: int = 0
 
     def __post_init__(self):
         self.vocab_size = self.number_of_gaussians
