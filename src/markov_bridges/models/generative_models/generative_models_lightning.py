@@ -110,6 +110,8 @@ class AbstractGenerativeModelL(ABC):
                     self.dataloader.validation_dataloader)
         
         self.save_config()
-        all_metrics = self.test_evaluation() if len(self.config.trainer.metrics) else None
+        trainer.test(ckpt_path="best", dataloader)
+        
+        # all_metrics = self.test_evaluation() if len(self.config.trainer.metrics) else None
 
         return all_metrics
