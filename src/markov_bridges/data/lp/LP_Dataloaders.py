@@ -50,6 +50,7 @@
 from dataclasses import dataclass
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
 from torch.utils.data import DataLoader
+import torch
 
 #### make configuration class for LP dataset
 @dataclass
@@ -81,12 +82,13 @@ class LPConfig:
 class LPDataloader(MarkovBridgeDataloader):
     #dataset_config : LPConfig
 
-    def __init__(self):
+    def __init__(self, which_dataset):
+        self.which_dataset = which_dataset #which subset you want (train, valid or test)
         self.dataset_config = LPConfig 
-        self.dataloaders = get_dataloaders()
+        #self.dataloader = self.get_dataloader(self.dataset)
         
 
-    def load_subsets(self): #function to load all 3 .pt files
+    def load_subset(self): #function to load all 3 .pt files
         """
         Load train, validation and test set original .pt files, which are list of dictionaries where each dictioary contains information for an instance.
         For each set obtain the entire list or a part of it according to the desred number of instances to retrieve from each set, 
@@ -98,13 +100,24 @@ class LPDataloader(MarkovBridgeDataloader):
                 "valid": selected_valid,
                 "test": selected_test}
         """
-        train, valid, test = torch.load(self.dataset_config.train_path), torch.load(self.dataset_config.valid_path), torch.load(self.dataset_config.test_path) #load original train validation and test
-        selected_train = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
-        selected_valid = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
-        selected_test = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
-        return {"train": selected_train,
-                "valid": selected_valid,
-                "test": selected_test}
+        if self.which_dataset == "train":
+            train = torch.load(self.dataset_config.train_path)
+            selected_dataset = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
+        elif self.which_dataset == "valid":
+            valid = torch.load(self.dataset_config.valid_path)
+            selected_dataset = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
+        elif self.which_dataset == "test":
+            test = torch.load(self.dataset_config.test_path)
+            selected_dataset = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
+
+        #train, valid, test = torch.load(self.dataset_config.train_path), torch.load(self.dataset_config.valid_path), torch.load(self.dataset_config.test_path) #load original train validation and test
+        #selected_train = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
+        #selected_valid = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
+        #selected_test = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
+        #return {"train": selected_train,
+        #        "valid": selected_valid,
+        #        "test": selected_test}
+        return selected_dataset
 
 
     #def processing(self):
@@ -132,7 +145,7 @@ class LPDataloader(MarkovBridgeDataloader):
 
         #### padding
         for key, value in out.items(): #iterate through keys and values of out dictionary
-            if key in KEYS_TO_PAD:  #if the value need to be padded
+            if key in self.dataset_config.KEYS_TO_PAD:  #if the value need to be padded
                 if "edge" not in key: #if it is not theedge list
                     if value[0].dtype != torch.float64: #check the dtype of the first tensor, if not double
                         value = [tensor.to(torch.float64) for tensor in value] #convert all tensors in the list to torch.float64
@@ -155,7 +168,8 @@ class LPDataloader(MarkovBridgeDataloader):
             mask_position_protein[i, 0:out["num_protein_nodes"][i]] = 1 #go to that row and from column 0 to column "num atoms in that sample" put 1, leave the rest of the row with 0
 
         out["mask_position_linker_gen"], out["mask_position_fragment"], out["mask_position_protein"] = mask_position_linker_gen, mask_position_fragment, mask_position_protein #add mask tensor to out dict
-        
+        del mask_position_linker_gen, mask_position_fragment, mask_position_protein
+
         ## category masks
         mask_category_linker_gen = torch.zeros_like(out["category_linker_gen"]) #create a tensor full of 0 of shape [num instances in dataset, max num linker nodes]
         for i in range(mask_category_linker_gen.shape[0]): #for each sample
@@ -170,6 +184,7 @@ class LPDataloader(MarkovBridgeDataloader):
             mask_category_protein[i, 0:out["num_protein_nodes"][i]] = 1 #go to that row and from the beginning to the number of atoms in that sample put 1, leave the rest with 0
 
         out["mask_category_linker_gen"], out["mask_category_fragment"], out["mask_category_protein"] = mask_category_linker_gen, mask_category_fragment, mask_category_protein
+        del mask_category_linker_gen, mask_category_fragment, mask_category_protein
 
         ## edge masks
         inf_mask_linker_gen = torch.isinf(out["linker_edge_list"]).all(dim=2)  # Returns a boolean tensor of the same shape as protein_chopped_edge_list indicating where the inf values are located
@@ -186,20 +201,33 @@ class LPDataloader(MarkovBridgeDataloader):
         mask_protein_edge_list[inf_mask_protein] = 0 # Set the corresponding positions to 0 where the mask is True
 
         out["mask_edge_list_linker_gen"], out["mask_edge_list_fragment"], out["mask_edge_list_protein"] = mask_linker_gen_edge_list, mask_fragment_edge_list, mask_protein_edge_list
+        del mask_linker_gen_edge_list, mask_fragment_edge_list, mask_protein_edge_list
 
         return out #return the dictionary
 
 
-    def get_dataloaders(self):
+    def get_dataloader(self):
         """
         For each subset (train, valid or test) and the associated instances, perform a preprocessing step using a custom collate fn, then return the three dataloaders.
 
+        For the chosen subset return the dataloader.
+        
         Returns:
         --------
+
+        Dataloader
+
+
         {"train": Dataloader for train,
         "valid": Dataloader for validation,
         "test": Dataloader for test}
         """
+        if self.which_dataset == "train":
+            shuffle=True
+        else:
+            shuffle=False
 
-        return {subset_name: Dataloader(subset, self.dataset_config.batch_size, shuffle=True, collate_fn=self.custom_collate(subset))
-                for subset_name, subset in self.load_subsets.items()}
+        loaded_dataset = self.load_subset()
+
+        return  DataLoader(loaded_dataset, self.dataset_config.batch_size, shuffle=shuffle, collate_fn=self.custom_collate(loaded_dataset))
+                
