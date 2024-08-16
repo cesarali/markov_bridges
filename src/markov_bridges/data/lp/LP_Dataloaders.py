@@ -124,7 +124,7 @@ class LPDataloader(MarkovBridgeDataloader):
     #    preprocessed_subsets = self.load_subsets() #dictionary with train, validation and test sets selected instances
     #    for subset in preprocessed_subsets:
 
-    def custom_collate(self, subset):
+    def custom_collate(self, data):
         """
         Custom collate function. 
 
@@ -139,7 +139,7 @@ class LPDataloader(MarkovBridgeDataloader):
 
         #### restyle data in the form of dictionay with unique keys, where to each key there are associated values of all instances
         out = {} #intialize out dictionary: this dictionary will contain unique keys and all the subset values
-        for sample in subset: #for each sample in the subset
+        for sample in data: #for each sample in the subset
             for k, v in sample.items(): #iterate through keys and values
                 out.setdefault(k, []).append(v) #set keys to out dictionary if not yet existing, then append values to the key
 
@@ -229,5 +229,5 @@ class LPDataloader(MarkovBridgeDataloader):
 
         loaded_dataset = self.load_subset()
 
-        return  DataLoader(loaded_dataset, self.dataset_config.batch_size, shuffle=shuffle, collate_fn=self.custom_collate(loaded_dataset))
+        return  DataLoader(loaded_dataset, self.dataset_config.batch_size, shuffle=shuffle, collate_fn=self.custom_collate)
                 
