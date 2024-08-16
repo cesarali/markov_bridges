@@ -13,6 +13,8 @@ class LPConfig:
     max_num_protein_nodes : int = 500 #max number of nodes a protein can have to pass the filter in the collate function of the dataloader
     accept_variable_bs : bool = False #if true, the filter that discard instances where protein has more than max_num_protein_nodes nodes is done in the collate funciton (which can result in batches with different number of samples and possibly empty batches). If false, the filtering is done before so that the dataloader receives allready filtered instances
 
+    padding_dependence : Literal["batch", "dataset", "all"] = "batch" #if "batch", the padding and the corresponding masks are created by the collate function of the dataloader, which means that everything is padded to the max number in the batch (in this way, different batches can have different shapes). If "dataset", the padding is performed with respect to the max number in the entire dataset (train, or valid or test), which means that each batch in each dataset has the same shape, buth the batch in the train has different shape from the batch in the test or valiation. "all" means that the padding is performed with respect to the max number among all three datasets. 
+
     num_pts_train : int = -1 #number of filtered instances to take from the entire training set. -1 means take all training filtered instances
     num_pts_valid : int = -1 #number of filtered instances to take from the entire validation set. -1 means take all filtered validation instances
     num_pts_test : int = -1 #number of filtered instances to take from the entire test set. -1 means take all filtered test instances
