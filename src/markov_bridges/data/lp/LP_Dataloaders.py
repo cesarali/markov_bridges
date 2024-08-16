@@ -34,41 +34,52 @@ class LPConfig:
 #### make dataloader class for LP dataset
 class LPDataloader(MarkovBridgeDataloader):
 
-    def __init__(self, which_dataset:Literal["train", "valid", "test"]):
+    def __init__(self):#, which_dataset:Literal["train", "valid", "test"]):
         #check that the dataset requested is correct, raise ValueError instead
-        if which_dataset not in ["train", "valid", "test"]:
-            raise ValueError(f"Invalid value for which_dataset: {which_dataset}. Must be one of ['train', 'valid', 'test']")
+        #if which_dataset not in ["train", "valid", "test"]:
+        #    raise ValueError(f"Invalid value for which_dataset: {which_dataset}. Must be one of ['train', 'valid', 'test']")
         
-        self.which_dataset = which_dataset #which subset you want (train, valid or test)
+        #self.which_dataset = which_dataset #which subset you want (train, valid or test)
         self.dataset_config = LPConfig #dataset configuration
         
 
-    def load_subset(self): 
+    def _load_subsets(self): 
         """
-        Loads train, validation or test set .pt files: those are list of dictionaries where each dictioary contains information for an instance.
+        Loads train, validation and test set .pt files: those are list of dictionaries where each dictioary contains information for an instance.
         Obtains the entire list or a part of it according to the desred number of instances to retrieve from that set, 
         then returns a list with the selected instances (all or just some).
 
         Returns:
         --------
-        selected_dataset : list
-            list of dicts where each dict contains information on 1 sample.
+       {"train": selected_train,
+                "valid": selected_valid,
+                "test": selected_test}
         """
-        if self.which_dataset == "train":
-            train = torch.load(self.dataset_config.train_path)
-            selected_dataset = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
-        elif self.which_dataset == "valid":
-            valid = torch.load(self.dataset_config.valid_path)
-            selected_dataset = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
-        elif self.which_dataset == "test":
-            test = torch.load(self.dataset_config.test_path)
-            selected_dataset = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
+        #if self.which_dataset == "train":
+        #    train = torch.load(self.dataset_config.train_path)
+        #    selected_dataset = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
+        #elif self.which_dataset == "valid":
+        #    valid = torch.load(self.dataset_config.valid_path)
+        #    selected_dataset = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
+        #elif self.which_dataset == "test":
+        #    test = torch.load(self.dataset_config.test_path)
+        #    selected_dataset = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
 
-        return selected_dataset
+        train = torch.load(self.dataset_config.train_path)
+        selected_train = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
+        valid = torch.load(self.dataset_config.valid_path)
+        selected_valid = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
+        test = torch.load(self.dataset_config.test_path)
+        selected_test = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
+
+
+        return {"train": selected_train,
+                "valid": selected_valid,
+                "test": selected_test}
 
 
 
-    def custom_collate(self, data):
+    def _custom_collate(self, data):
         """
         Custom collate function. 
 
@@ -152,20 +163,59 @@ class LPDataloader(MarkovBridgeDataloader):
 
         return out #return the dictionary
 
+    def _get_shuffle_value(self, split):
+        # Fetch the shuffle value based on the split key
+        if split == 'train':
+            return self.dataset_config.shuffle_train
+        elif split == 'valid':
+            return self.dataset_config.shuffle_valid
+        elif split == 'test':
+            return self.dataset_config.shuffle_test
+        else:
+            raise ValueError(f"Unknown split: {split}. Mus be one of ['train', 'valid', 'test']")
 
-    def get_dataloader(self):
+    def _get_dataloaders(self):
         """
         For the chosen subset ("train", "valid" or "test" returned by load_subset function) returns the corresponding dataloader.
         """
         #set shuffle bool value according to self.which_subset
-        if self.which_dataset == "train":
-            shuffle = self.dataset_config.shuffle_train 
-        elif self.which_dataset == "valid":
-            shuffle = self.dataset_config.shuffle_valid
-        elif self.which_dataset == "test":
-            shuffle = self.dataset_config.shuffle_test
+        #if self.which_dataset == "train":
+        #    shuffle = self.dataset_config.shuffle_train 
+        #elif self.which_dataset == "valid":
+        #    shuffle = self.dataset_config.shuffle_valid
+        #elif self.which_dataset == "test":
+        #    shuffle = self.dataset_config.shuffle_test
 
-        loaded_dataset = self.load_subset() #load the desired dataset
+        #loaded_datasets = self.load_subsets() #load the desired dataset
 
-        return  DataLoader(dataset=loaded_dataset, batch_size=self.dataset_config.batch_size, shuffle=shuffle, num_workers=self.dataset_config.num_workers, collate_fn=self.custom_collate) #return the dataloader
-                
+        #return  DataLoader(dataset=loaded_dataset, batch_size=self.dataset_config.batch_size, shuffle=shuffle, num_workers=self.dataset_config.num_workers, collate_fn=self.custom_collate) #return the dataloader
+        return {split: DataLoader(dataset=dataset, batch_size=self.dataset_config.batch_size, shuffle=self._get_shuffle_value(split), num_workers=self.dataset_config.num_workers, collate_fn=self._custom_collate) 
+                for split, dataset in self._load_subsets().items()}    
+    
+    def train(self):
+        return self._get_dataloaders()["train"]
+    
+    def valid(self):
+        return self._get_dataloaders()["valid"]
+    
+    def test(self):
+        return self._get_dataloaders()["test"]
+    
+    def get_databatch_keys(self, check=False):
+        if check:
+            ### retrieve the first batch from eanch of the three dataloader
+            first_batches = {}
+            for key, loader in self._get_dataloaders().items():
+                first_batch = next(iter(loader))# Get the first batch
+                first_batches[key] = first_batch #put it in the dictionay associating it with the corret dataset name (train, valid or test)
+            ### retrieve keys in each of the three batches and check that they corrspond
+            batch_keys = {key: list(batch.keys()) for key, batch in first_batches.items()}
+            assert all(keys == batch_keys[list(batch_keys.keys())[0]] for keys in batch_keys.values()), "Datasets must have same set of keys!" # Ensure all keys are the same
+        else: #(default)
+            #### load only first batch of test set, do not check for key correspondence but instead just return the keys in the first batch of test set (do only if you are sure that keys correspond)
+            first_batches = {}
+            for key, loader in self._get_dataloaders().items():
+                if key=="test":
+                    first_batch = next(iter(loader))# Get the first batch
+                    first_batches[key] = first_batch #put it in the dictionay associating it with the corret dataset name (train, valid or test)
+        return list(first_batches["test"].keys()) #batch_keys #[first_batches["test"].keys()]
