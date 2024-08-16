@@ -1,70 +1,22 @@
-# dataloader for lp dataset
-
-
-##import torch
-#from torch.utils.data import Dataset
-
-#define custom class for the dataloader
-#class LPDataset(Dataset):
-#    def __init__(self, data):
-#        self.data = data#
-#
-#    def __len__(self):
-#        return len(self.data)
-#
-#    def __getitem__(self, idx):
-#        return self.data[idx]
-    
-
-    
-#def _collate(self, dataset):
-#    """
-#    Custom collate function. 
-#    It takes as input a dataset (can be train, validation or test set), and rearrange informations.#
-#
-#    dataset is a list of dictionaries like [{"mol_number":1, "mol_pos":torch.tensor with positions of molecule 1, "mol_onehot":torch.tensor with onehot of molecule one}, {same for mol2..}]
-#    and returns a dictionary like {"mol_number": torch.tensor of all molecules number, "mol_pos":torch.tensor of all molecule atoms positions} ...
-#    """
-#    out = {} #intialize out dictionary
-#    for sample in dataset: #for each sample in the dataset
-#        for key, value in sample.items(): #iterate through keys
-#            out.setdefault(key, []).append(value) #set keys to out dictionary if not yet existing, then append values to the key
-    
-    
-    #padding
-
-    
-#def get_dataloaders(self, train_path, val_path, test_path, batch_size):
-#    train, val, test = torch.load(train_path), torch.load(val_path), torch.load(test_path) #load .pt files -> obtain list of dictionaries where every dictionary is for a sample
-
-
-
-
-
-
-
-
-
-
-
 from dataclasses import dataclass
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
 from torch.utils.data import DataLoader
 import torch
+from typing import Literal
 
 #### make configuration class for LP dataset
 @dataclass
 class LPConfig:
-    batch_size : int = 32 
-    num_workers : int = 12
+    batch_size : int = 32 #batch size
+    num_workers : int = 6 #number of subprocesses used to load the data (0 = sequantial data loading: may create a bottleneck)
 
-    num_pts_train : int = -1 #by default take all training instances
-    num_pts_valid : int = -1 #by default take all validation instances
-    num_pts_test : int = -1 #by default take all test instances
+    num_pts_train : int = -1 #number of instances to take from the entire training set. -1 means take all training instances
+    num_pts_valid : int = -1 #number of instances to take from the entire validation set. -1 means take all validation instances
+    num_pts_test : int = -1 #number of instances to take from the entire test set. -1 means take all test instances
 
-    #shuffle_train : bool = True #shuffle to pass to the dataloader for train
-    #shuffle_valid : bool = False #shuffle to pass to the dataloader for valid
-    #shuffle_test : bool = False #shuffle to pass to the dataloader for test
+    shuffle_train : bool = True #shuffle to pass to the dataloader for train
+    shuffle_valid : bool = False #shuffle to pass to the dataloader for valid
+    shuffle_test : bool = False #shuffle to pass to the dataloader for test
 
     KEYS_TO_PAD = ["position_linker_gen", "category_linker_gen", #list of keys whose values need padding in the dataloader collate function
                    "position_fragment", "category_fragment", 
@@ -79,26 +31,28 @@ class LPConfig:
     test_path : str = "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/test.pt" #path for test set to load, preprocess and return via the dataloader
 
 
+#### make dataloader class for LP dataset
 class LPDataloader(MarkovBridgeDataloader):
-    #dataset_config : LPConfig
 
-    def __init__(self, which_dataset):
+    def __init__(self, which_dataset:Literal["train", "valid", "test"]):
+        #check that the dataset requested is correct, raise ValueError instead
+        if which_dataset not in ["train", "valid", "test"]:
+            raise ValueError(f"Invalid value for which_dataset: {which_dataset}. Must be one of ['train', 'valid', 'test']")
+        
         self.which_dataset = which_dataset #which subset you want (train, valid or test)
-        self.dataset_config = LPConfig 
-        #self.dataloader = self.get_dataloader(self.dataset)
+        self.dataset_config = LPConfig #dataset configuration
         
 
-    def load_subset(self): #function to load all 3 .pt files
+    def load_subset(self): 
         """
-        Load train, validation and test set original .pt files, which are list of dictionaries where each dictioary contains information for an instance.
-        For each set obtain the entire list or a part of it according to the desred number of instances to retrieve from each set, 
-        then return a dictionary with the obtained train, validation and test list of instances.
+        Loads train, validation or test set .pt files: those are list of dictionaries where each dictioary contains information for an instance.
+        Obtains the entire list or a part of it according to the desred number of instances to retrieve from that set, 
+        then returns a list with the selected instances (all or just some).
 
         Returns:
         --------
-        {"train": selected_train,
-                "valid": selected_valid,
-                "test": selected_test}
+        selected_dataset : list
+            list of dicts where each dict contains information on 1 sample.
         """
         if self.which_dataset == "train":
             train = torch.load(self.dataset_config.train_path)
@@ -110,28 +64,21 @@ class LPDataloader(MarkovBridgeDataloader):
             test = torch.load(self.dataset_config.test_path)
             selected_dataset = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
 
-        #train, valid, test = torch.load(self.dataset_config.train_path), torch.load(self.dataset_config.valid_path), torch.load(self.dataset_config.test_path) #load original train validation and test
-        #selected_train = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
-        #selected_valid = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
-        #selected_test = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
-        #return {"train": selected_train,
-        #        "valid": selected_valid,
-        #        "test": selected_test}
         return selected_dataset
 
 
-    #def processing(self):
-    #    preprocessed_subsets = self.load_subsets() #dictionary with train, validation and test sets selected instances
-    #    for subset in preprocessed_subsets:
 
     def custom_collate(self, data):
         """
         Custom collate function. 
 
-        It takes as input a subset (can be train, validation or test set) returned by the load_subset function, rearrange informations, performs padding and create masks after padding.
+        It takes as input a batch of data organized as returned by the load_subset function. It rearranges information, performs padding and create masks after padding. 
+        Then, returns a dictionary with unique keys containing information and padding masks for the instances in the batch.
 
-        subset is a list of dictionaries like [{"mol_number":1, "mol_pos":torch.tensor with positions of molecule 1, "mol_onehot":torch.tensor with onehot of molecule one}, {same for mol2..}]:
-        it contains all instances for a given subset (train, valid or test).
+        Notes:
+        ----------
+        data is a list of dictionaries like [{"mol_number":1, "mol_pos":torch.tensor with positions of molecule 1, "mol_onehot":torch.tensor with onehot of molecule one}, {same for mol2..}]:
+        it contains a batch of instances from the selected subset (train, valid or test returned by load_subset function).
 
         custom_collate first creates the out dictionary to be like {"mol_number": torch.tensor of all molecules number, "mol_pos":torch.tensor of all molecule atoms positions} ...,
         then padd all values specified in config KEYS_TO_PAD, and finally create the masks for padded things.
@@ -208,26 +155,17 @@ class LPDataloader(MarkovBridgeDataloader):
 
     def get_dataloader(self):
         """
-        For each subset (train, valid or test) and the associated instances, perform a preprocessing step using a custom collate fn, then return the three dataloaders.
-
-        For the chosen subset return the dataloader.
-        
-        Returns:
-        --------
-
-        Dataloader
-
-
-        {"train": Dataloader for train,
-        "valid": Dataloader for validation,
-        "test": Dataloader for test}
+        For the chosen subset ("train", "valid" or "test" returned by load_subset function) returns the corresponding dataloader.
         """
+        #set shuffle bool value according to self.which_subset
         if self.which_dataset == "train":
-            shuffle=True
-        else:
-            shuffle=False
+            shuffle = self.dataset_config.shuffle_train 
+        elif self.which_dataset == "valid":
+            shuffle = self.dataset_config.shuffle_valid
+        elif self.which_dataset == "test":
+            shuffle = self.dataset_config.shuffle_test
 
-        loaded_dataset = self.load_subset()
+        loaded_dataset = self.load_subset() #load the desired dataset
 
-        return  DataLoader(loaded_dataset, self.dataset_config.batch_size, shuffle=shuffle, collate_fn=self.custom_collate)
+        return  DataLoader(dataset=loaded_dataset, batch_size=self.dataset_config.batch_size, shuffle=shuffle, num_workers=self.dataset_config.num_workers, collate_fn=self.custom_collate) #return the dataloader
                 
