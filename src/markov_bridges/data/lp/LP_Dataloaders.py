@@ -10,9 +10,12 @@ class LPConfig:
     batch_size : int = 32 #batch size
     num_workers : int = 6 #number of subprocesses used to load the data (0 = sequantial data loading: may create a bottleneck)
 
-    num_pts_train : int = -1 #number of instances to take from the entire training set. -1 means take all training instances
-    num_pts_valid : int = -1 #number of instances to take from the entire validation set. -1 means take all validation instances
-    num_pts_test : int = -1 #number of instances to take from the entire test set. -1 means take all test instances
+    max_num_protein_nodes : int = 500 #max number of nodes a protein can have to pass the filter in the collate function of the dataloader
+    accept_variable_bs : bool = False #if true, the filter that discard instances where protein has more than max_num_protein_nodes nodes is done in the collate funciton (which can result in batches with different number of samples and possibly empty batches). If false, the filtering is done before so that the dataloader receives allready filtered instances
+
+    num_pts_train : int = -1 #number of filtered instances to take from the entire training set. -1 means take all training filtered instances
+    num_pts_valid : int = -1 #number of filtered instances to take from the entire validation set. -1 means take all filtered validation instances
+    num_pts_test : int = -1 #number of filtered instances to take from the entire test set. -1 means take all filtered test instances
 
     shuffle_train : bool = True #shuffle to pass to the dataloader for train
     shuffle_valid : bool = False #shuffle to pass to the dataloader for valid
@@ -65,13 +68,22 @@ class LPDataloader(MarkovBridgeDataloader):
         #    test = torch.load(self.dataset_config.test_path)
         #    selected_dataset = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
 
+        ### load the entire dataset
         train = torch.load(self.dataset_config.train_path)
-        selected_train = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
         valid = torch.load(self.dataset_config.valid_path)
-        selected_valid = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
         test = torch.load(self.dataset_config.test_path)
-        selected_test = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
 
+        ### filter for the number of protein nodes
+        if self.dataset_config.accept_variable_bs == False: #by default this is executed
+            train = [instance for instance in train if instance["num_protein_nodes"]<=self.dataset_config.max_num_protein_nodes] #for each element in the list of dictionaries where every dictionary represent an instance, take only those where the number of nodes is below 500
+            valid = [instance for instance in valid if instance["num_protein_nodes"]<=self.dataset_config.max_num_protein_nodes]
+            test = [instance for instance in test if instance["num_protein_nodes"]<=self.dataset_config.max_num_protein_nodes]
+            print(f"[INFO]\nNumber of training instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(train)}\nNumber of validation instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(valid)}\nNumber of test instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(test)}\n")
+
+        ### select the number of instances tot ake from each filtered dataset
+        selected_train = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
+        selected_valid = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
+        selected_test = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
 
         return {"train": selected_train,
                 "valid": selected_valid,
@@ -94,6 +106,9 @@ class LPDataloader(MarkovBridgeDataloader):
         custom_collate first creates the out dictionary to be like {"mol_number": torch.tensor of all molecules number, "mol_pos":torch.tensor of all molecule atoms positions} ...,
         then padd all values specified in config KEYS_TO_PAD, and finally create the masks for padded things.
         """
+        if self.dataset_config.accept_variable_bs: #by default is false so this "if" is not executed
+            #### filter out instances where the number of protein nosed is > 500 (500 is a parameter that can be set from the dataset config class)
+            data = [instance for instance in data if instance["num_protein_nodes"]<=self.dataset_config.max_num_protein_nodes] #for each element in the list of dictionaries where every dictionary represent an instance, take only those where the number of nodes is below 500
 
         #### restyle data in the form of dictionay with unique keys, where to each key there are associated values of all instances
         out = {} #intialize out dictionary: this dictionary will contain unique keys and all the subset values
