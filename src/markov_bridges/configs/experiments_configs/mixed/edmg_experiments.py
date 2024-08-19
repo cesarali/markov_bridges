@@ -1,4 +1,4 @@
-from markov_bridges.configs.config_classes.data.molecules_configs import QM9Config
+from markov_bridges.configs.config_classes.data.molecules_configs import QM9Config, LPConfig
 
 from markov_bridges.configs.config_classes.generative_models.edmg_config import (
     EDMGConfig,
@@ -26,6 +26,20 @@ def get_edmg_experiment():
                                   num_pts_valid=200)
     model_config.noising_model = NoisingModelConfig(conditioning=['H_thermo', 'homo' ])
     #model_config.noising_model = NoisingModelConfig()
+    model_config.trainer = EDMGTrainerConfig(number_of_epochs=200,
+                                             debug=True,
+                                             learning_rate=1e-4)
+    model_config.trainer.metrics = []
+    model_config.pipeline = BasicPipelineConfig(number_of_steps=200)
+
+    return model_config
+
+def get_edmg_lp_experiment():
+    model_config = EDMGConfig()
+    model_config.data = LPConfig(num_pts_train=1000,
+                                  num_pts_test=200,
+                                  num_pts_valid=200)
+    model_config.noising_model = NoisingModelConfig()
     model_config.trainer = EDMGTrainerConfig(number_of_epochs=200,
                                              debug=True,
                                              learning_rate=1e-4)

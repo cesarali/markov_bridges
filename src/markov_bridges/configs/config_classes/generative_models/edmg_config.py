@@ -18,7 +18,7 @@ from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs impo
     InvertedExponentialThermostatConfig
 )
 
-from markov_bridges.configs.config_classes.data.molecules_configs import QM9Config
+from markov_bridges.configs.config_classes.data.molecules_configs import QM9Config, LPConfig
 from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
 from markov_bridges.configs.config_classes.pipelines.pipeline_configs import BasicPipelineConfig
 from markov_bridges.configs.config_classes.trainers.trainer_config import EDMGTrainerConfig
@@ -155,3 +155,34 @@ class EDMGConfig:
         if isinstance(self.pipeline,dict):
             self.pipeline = BasicPipelineConfig(**self.pipeline)
 
+
+@dataclass
+class EDMG_LPConfig:
+    """
+    Data class to store all configuration files for LP model
+    """
+    # data
+    #data: QM9Config|IndependentMixConfig = QM9Config()
+    data: LPConfig = field(default_factory=LPConfig) #lp
+    # noising_model
+    #noising_model: Union[NoisingModelConfig] = NoisingModelConfig()
+    noising_model: Union[NoisingModelConfig] = field(default_factory=NoisingModelConfig) #lp
+    # training
+    #trainer: EDMGTrainerConfig = EDMGTrainerConfig()
+    trainer: EDMGTrainerConfig = field(default_factory=EDMGTrainerConfig) #lp
+    #pipeline
+    #pipeline : BasicPipelineConfig = BasicPipelineConfig(num_intermediates=None)
+    pipeline : BasicPipelineConfig = field(default_factory=lambda: BasicPipelineConfig(num_intermediates=None)) #lp
+
+    def __post_init__(self):
+        if isinstance(self.data,dict):
+            self.data = LPConfig(**self.data)
+
+        if isinstance(self.noising_model,dict):
+            self.noising_model = NoisingModelConfig(**self.noising_model)
+
+        if isinstance(self.trainer,dict):
+            self.trainer = EDMGTrainerConfig(**self.trainer)
+
+        if isinstance(self.pipeline,dict):
+            self.pipeline = BasicPipelineConfig(**self.pipeline)
