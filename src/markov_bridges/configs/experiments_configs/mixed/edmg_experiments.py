@@ -36,9 +36,7 @@ def get_edmg_experiment():
 
 def get_edmg_lp_experiment():
     model_config = EDMGConfig()
-    model_config.data = LPConfig(num_pts_train=1000,
-                                  num_pts_test=200,
-                                  num_pts_valid=200)
+    model_config.data = LPConfig()
     model_config.noising_model = NoisingModelConfig()
     model_config.trainer = EDMGTrainerConfig(number_of_epochs=200,
                                              debug=True,
