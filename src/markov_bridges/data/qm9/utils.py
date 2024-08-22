@@ -16,8 +16,8 @@ def compute_mean_mad_from_dataloader(dataloader, properties):
         ma = torch.abs(values - mean)
         mad = torch.mean(ma)
         property_norms[property_key] = {}
-        property_norms[property_key]['mean'] = mean
-        property_norms[property_key]['mad'] = mad
+        property_norms[property_key]['mean'] = mean.item()
+        property_norms[property_key]['mad'] = mad.item()
     return property_norms
 
 edges_dic = {}
@@ -49,7 +49,6 @@ def preprocess_input(one_hot, charges, charge_power, charge_scale, device):
     charge_tensor = charge_tensor.view(charges.shape + (1, charge_power + 1))
     atom_scalars = (one_hot.unsqueeze(-1) * charge_tensor).view(charges.shape[:2] + (-1,))
     return atom_scalars
-
 
 def prepare_context(conditioning, minibatch, property_norms):
     batch_size, n_nodes, _ = minibatch['positions'].size()

@@ -17,11 +17,11 @@ class MixedTauState:
     this class defines variables for each type of variable and defines list to store the paths of each
     of the variables if requiered
     """
+    number_of_paths: int = 0 
+    save_ts: torch.Tensor = None
     discrete: torch.Tensor = None
     continuous: torch.Tensor = None
     state_0:MarkovBridgeDataNameTuple=None
-    save_ts: torch.Tensor = None
-    number_of_paths: int = 0 
 
     def __init__(self, config:CMBConfig, state: MarkovBridgeDataNameTuple,save_ts=None):
         self.has_target_continuous = config.data.has_target_continuous

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 @dataclass
 class QM9Config:
+    name:str="QM9"
     batch_size:int = 32
     num_workers:int = 12
     filter_n_atoms:int = None
@@ -17,3 +18,12 @@ class QM9Config:
     dataset:str = 'qm9'
     datadir:str = r"C:\Users\cesar\Desktop\Projects\DiffusiveGenerativeModelling\OurCodes\markov_bridges\data\raw\graph"
     wandb:bool = False
+
+    context_node_nf:int=None
+    vocab_size:int = None
+    property_norms:dict = None
+    
+    has_target_discrete:int = True
+    has_target_continuous:int = True
+    continuos_dimensions:int = 3
+    discrete_dimensions:int = None 

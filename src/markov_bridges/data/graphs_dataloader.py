@@ -20,19 +20,23 @@ from markov_bridges.data.abstract_dataloader import (
     MarkovBridgeDataloader,
     MarkovBridgeDataClass,
     MarkovBridgeDataset,
+    MarkovBridgeDatasetNew,
     MarkovBridgeDataNameTuple
 )
 
 from markov_bridges.utils.graphs_utils import graphs_to_tensor
 from markov_bridges.data.transforms import get_transforms,get_expected_shape
+from markov_bridges.utils.shapes import nodes_and_edges_masks
+from markov_bridges.data.utils import sample_moons
 
-GraphDataNameTuple = namedtuple("DatabatchClass", "source_discrete target_discrete")
-
+GraphDataNameTuple = namedtuple("DatabatchClass", "num_nodes source_discrete target_discrete node_mask edges_mask context_continuous time")
 
 class GraphDataloader(MarkovBridgeDataloader):
+
     graph_config : GraphDataloaderGeometricConfig
     name:str = "GraphDataloader"
     max_node_num:int 
+    dataset_info:dict
     expected_shape:List[int]
 
     def __init__(self,graph_config:GraphDataloaderGeometricConfig):
@@ -40,9 +44,14 @@ class GraphDataloader(MarkovBridgeDataloader):
         :param config:
         :param device:
         """
+        MarkovBridgeDataloader.__init__(self,graph_config)
         self.graph_config = graph_config
+        self.data_batch_keys = graph_config.data_batch_keys
         self.transform_list,self.inverse_transform_list = get_transforms(graph_config)
+        
         self.get_dataloaders()
+        if len(self.conditioning) > 0:
+            self.property_norms = self.get_property_norms()
 
     def transform_to_native_shape(self,data:Union[GraphDataNameTuple,torch.Tensor])->Union[GraphDataNameTuple,torch.Tensor]:
         """
@@ -88,16 +97,16 @@ class GraphDataloader(MarkovBridgeDataloader):
         self.graph_config.discrete_generation_dimension = self.dimension
 
         train_data = self.get_data_divisions(train_data,self.graph_config)
-        train_data = MarkovBridgeDataset(train_data)
+        train_data = MarkovBridgeDatasetNew(train_data)
 
         test_data = self.get_data_divisions(test_data,self.graph_config)
-        test_data = MarkovBridgeDataset(test_data)
+        test_data = MarkovBridgeDatasetNew(test_data)
 
         self.train_dataloader = DataLoader(train_data, batch_size=self.graph_config.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(test_data,batch_size=self.graph_config.batch_size, shuffle=True)
         self.validation_dataloader = self.test_dataloader
         
-        self.fields = test_data.fields
+        self.fields = test_data.data_batch_keys
         self.DatabatchNameTuple = namedtuple("DatabatchClass", self.fields)
         self.graph_config.fields = self.fields
 
@@ -106,13 +115,27 @@ class GraphDataloader(MarkovBridgeDataloader):
         reads the data files
         """
         train_graph_list, test_graph_list,max_number_of_nodes,min_number_of_nodes = self.read_graph_lists()
+        if "num_nodes" in self.data_batch_keys:
+            number_of_node_train = torch.Tensor([graph.number_of_nodes() for graph in train_graph_list]).long()
+            number_of_node_test = torch.Tensor([graph.number_of_nodes() for graph in test_graph_list]).long()
+            max_ = max(number_of_node_train.max().item(),number_of_node_test.max().item())
+            # Count the occurrences of each value in the tensor
+            unique_values, counts = torch.unique(number_of_node_train, return_counts=True)
+            # Combine unique values with their respective counts
+            value_counts = dict(zip(unique_values.tolist(), counts.tolist()))
+            self.dataset_info = {'n_nodes':value_counts,
+                                 'max_n_nodes':max_}
+        else:
+            number_of_node_train = None
+            number_of_node_test = None
+
         train_data = graphs_to_tensor(train_graph_list,max_number_of_nodes)
         test_data = graphs_to_tensor(test_graph_list,max_number_of_nodes)
 
         self.max_node_num = max_number_of_nodes
         self.min_node_num = min_number_of_nodes
 
-        return train_data,test_data
+        return (train_data,number_of_node_train),(test_data,number_of_node_test)
     
     def get_source_data(self,dataset,data_config:MarkovBridgeDataConfig):
         dataset_size = dataset.size(0)
@@ -124,18 +147,42 @@ class GraphDataloader(MarkovBridgeDataloader):
         else:
             raise Exception("Source not Implemented")
     
-    def get_data_divisions(self,dataset,data_config:MarkovBridgeDataConfig)->MarkovBridgeDataClass:
+    def get_data_divisions(self,dataset,data_config:MarkovBridgeDataConfig)->GraphDataNameTuple:
         """
         divides the data in the different context, source and target
         """
+        graph_tensors = dataset[0]
+        graph_sizes = dataset[1]
+
         # preprocess data
-        target_discrete = self.transform_list(dataset)
+        target_discrete = self.transform_list(graph_tensors)
 
         # source
         source_discrete = self.get_source_data(target_discrete,data_config)
 
-        return MarkovBridgeDataClass(source_discrete=source_discrete,
-                                     target_discrete=target_discrete)
+        # data dict
+        data_dict = {"target_discrete":target_discrete,
+                     "source_discrete":source_discrete}
+        
+        # add sizes
+        if graph_sizes is not None:
+            data_dict.update({"num_nodes":graph_sizes})
+
+        # add masks
+        if "node_mask" in self.data_batch_keys:
+            max_n_nodes = graph_tensors.size(-1)
+            node_mask,edge_mask = nodes_and_edges_masks(graph_sizes,max_n_nodes)
+            data_dict.update({"node_mask":node_mask,
+                              "edges_mask":edge_mask})
+        
+        # continuous context
+        if "context_continuous" in self.data_batch_keys:
+            sample_size = target_discrete.size(0)
+            number_of_nodes = target_discrete.size(1)
+            points = torch.normal(0.,1.,size=(sample_size,))
+            data_dict.update({"context_continuous":points})
+
+        return data_dict
     
     def read_graph_lists(self)->Tuple[List[nx.Graph]]:
         """

@@ -3,6 +3,7 @@ from markov_bridges.utils.experiment_files import ExperimentFiles
 from markov_bridges.models.generative_models.cmb_lightning import MixedForwardMapL,CMBL
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig
+from markov_bridges.configs.config_classes.data.graphs_configs import CommunitySmallGConfig
 from markov_bridges.configs.config_classes.trainers.trainer_config import CMBTrainerConfig
 from markov_bridges.configs.config_classes.networks.mixed_networks_config import MixedDeepMLPConfig
 

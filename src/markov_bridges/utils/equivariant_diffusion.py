@@ -1,6 +1,11 @@
 import torch
 import numpy as np
 
+def check_mask_correct(variables, node_mask):
+    for i, variable in enumerate(variables):
+        if len(variable) > 0:
+            assert_correctly_masked(variable, node_mask)
+            
 def sum_except_batch(x):
     return x.reshape(x.size(0), -1).sum(dim=-1)
 

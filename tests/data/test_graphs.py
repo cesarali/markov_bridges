@@ -21,5 +21,5 @@ def test_load_networkx():
     print(target_graphs[0])
     
 if __name__=="__main__":
-    test_load_networkx()
+    test_load_graph()
     

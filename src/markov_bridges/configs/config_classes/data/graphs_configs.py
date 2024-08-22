@@ -1,7 +1,13 @@
 import os
 from markov_bridges import data_path
 from dataclasses import dataclass,asdict,field
-from typing import List, Union, Optional, Tuple, Dict
+from typing import (
+    List, 
+    Union, 
+    Optional, 
+    Tuple, 
+    Dict
+)
 from markov_bridges.configs.config_classes.data.basics_configs import MarkovBridgeDataConfig
 
 graph_data_path = os.path.join(data_path,"raw","graph")
@@ -39,7 +45,23 @@ class GraphDataloaderGeometricConfig(MarkovBridgeDataConfig):
 
     has_context_discrete: bool = False
     context_discrete_dimension:int = 0
-
+    data_batch_keys:List[str] =  field(default_factory=lambda:["num_nodes",
+                                                               "discrete_target",
+                                                               "node_mask",
+                                                               "edges_mask",
+                                                               "context_continuous"])
+    
+    def __post_init__(self):
+        if "context_continuous" in self.data_batch_keys:
+            self.has_context_continuous = True
+            self.context_continuous_dimension = 1
+        else:
+            self.has_context_continuous = False
+            self.context_continuous_dimension = 0
+            
+        self.has_target_continuous = False
+        self.has_target_discrete = True
+        self.has_context_discrete = False
 
 @dataclass
 class EgoGConfig(GraphDataloaderGeometricConfig):

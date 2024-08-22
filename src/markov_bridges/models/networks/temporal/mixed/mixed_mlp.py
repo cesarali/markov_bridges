@@ -32,7 +32,7 @@ class MixedDeepMLP(nn.Module):
         self.define_deep_models(config)
         self.init_weights()
         
-        if device is None:
+        if device is not None:
             self.to(device)
 
     def set_dimensions(self,config:CMBConfig):

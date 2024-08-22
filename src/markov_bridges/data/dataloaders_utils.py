@@ -11,9 +11,11 @@ from markov_bridges.configs.config_classes.data.sequences_config import Sinusoid
 from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig, GaussiansConfig
 
 from markov_bridges.configs.config_classes.generative_models.cjb_config import CJBConfig
+from markov_bridges.configs.config_classes.generative_models.edmg_config import EDMGConfig
+from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
 from markov_bridges.configs.config_classes.data.molecules_configs import QM9Config
 
-def get_dataloaders(config:CJBConfig):
+def get_dataloaders(config:CJBConfig|CMBConfig|EDMGConfig):
     if isinstance(config.data,LakhPianoRollConfig):
         dataloader = LankhPianoRollDataloader(config.data)
     elif isinstance(config.data,GraphDataloaderGeometricConfig):

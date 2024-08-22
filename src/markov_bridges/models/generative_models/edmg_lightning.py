@@ -42,6 +42,7 @@ from markov_bridges.utils.equivariant_diffusion import (
     assert_correctly_masked, 
     sample_center_gravity_zero_gaussian_with_mask,
     random_rotation,
+    check_mask_correct,
     Queue
 )
 
@@ -54,11 +55,6 @@ def sum_except_batch(x):
 def assert_correctly_masked(variable, node_mask):
     assert (variable * (1 - node_mask)).abs().sum().item() < 1e-8
 
-def check_mask_correct(variables, node_mask):
-    for i, variable in enumerate(variables):
-        if len(variable) > 0:
-            assert_correctly_masked(variable, node_mask)
-
 class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
     """
     This corresponds to the torch module which contains all the elements requiered to 
@@ -68,7 +64,7 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
     noising_model:EnVariationalDiffusion 
     nodes_dist:DistributionNodes
     prop_dist:DistributionProperty
-
+    
     def __init__(self,config:EDMGConfig,dataloader:QM9PointDataloader):
         """
         this function should allow us to create a full discrete and continuous vector from the context and data
@@ -96,6 +92,7 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
         self.noising_model,self.nodes_dist, self.prop_dist = get_edmg_model(config,
                                                                             dataloader.dataset_info,
                                                                             dataloader.train())
+        
         if self.prop_dist is not None:
             self.prop_dist.set_normalizer(self.property_norms)
         
@@ -123,7 +120,6 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
             context = None
 
         return max_n_nodes,nodesxsample,node_mask,edge_mask,context
-    
     #====================================================================
     # TRAINING
     #====================================================================
@@ -164,7 +160,6 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
         x = remove_mean_with_mask(x, node_mask)
         if self.noising_config.data_augmentation:
             x = random_rotation(x).detach()
-
         check_mask_correct([x, one_hot, charges], node_mask)
         assert_mean_zero_with_mask(x, node_mask)
         h = {'categorical': one_hot, 'integer': charges}
@@ -269,7 +264,6 @@ class EquivariantDiffussionNoisingL(EMA,L.LightningModule):
         self.gradnorm_queue.add(3000)  # Add large value that will be flushed.
 
         return optimizer
-
 
 class EDGML(AbstractGenerativeModelL):
 

@@ -16,6 +16,7 @@ if __name__=="__main__":
     cfm = MixedForwardMap(model_config,device=torch.device("cpu"))
     discrete_sample,continuous_sample = cfm.sample_bridge(databatch)
     rate,drift = cfm.forward_map(discrete_sample,continuous_sample,databatch.time,databatch)
+    print(drift.shape)
 
     #loss = cfm.loss(databatch,discrete_sample,continuous_sample)
     #print(rate.shape)

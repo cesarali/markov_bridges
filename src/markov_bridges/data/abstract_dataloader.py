@@ -11,9 +11,22 @@ import torch
 from collections import namedtuple
 from typing import List
 from abc import ABC,abstractmethod
+from markov_bridges.configs.config_classes.data.basics_configs import MarkovBridgeDataConfig
+
+def compute_mean_mad_from_dataloader(dataloader, properties):
+    property_norms = {}
+    for property_key in properties:
+        values = dataloader.dataset.data[property_key]
+        mean = torch.mean(values)
+        ma = torch.abs(values - mean)
+        mad = torch.mean(ma)
+        property_norms[property_key] = {}
+        property_norms[property_key]['mean'] = mean
+        property_norms[property_key]['mad'] = mad
+    return property_norms
 
 #MarkovBridgeDataNameTuple is the named tuple with all possible datavalues, but this changes for each dataset
-MarkovBridgeDataNameTuple = namedtuple("DatabatchClass", "source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous time")
+MarkovBridgeDataNameTuple = namedtuple("DatabatchClass", "num_nodes source_discrete source_continuous target_discrete target_continuous context_discrete context_continuous time")
 
 def create_databatch_nametuple(data):
     fields = []
@@ -98,6 +111,31 @@ class MarkovBridgeDataset(Dataset):
         databatch = self.DatabatchNameTuple(*data_fields)
         return databatch
 
+class MarkovBridgeDatasetNew(Dataset):
+    """
+    Custom Dataset class for MarkovBridge models.
+    """
+    def __init__(self, data: MarkovBridgeDataClass):
+        super(MarkovBridgeDatasetNew, self).__init__()
+        self.data = data
+        self.data_batch_keys = list(self.data.keys())
+        self.num_samples = self.data[self.data_batch_keys[0]].size(0)
+        self.data_batch_keys.append("time")
+        self.DatabatchNameTuple = namedtuple("DatabatchClass", self.data_batch_keys)
+            
+    def __len__(self):
+        return self.num_samples
+
+    def __getitem__(self, idx):
+        # Collect data fields based on availability
+        data_fields = []
+        for key in self.data_batch_keys[:-1]:
+            data_fields.append(self.data[key][idx])
+        data_fields.append(torch.rand((1,)))
+        databatch = self.DatabatchNameTuple(*data_fields)
+
+        return databatch
+
 class MarkovBridgeDataloader(ABC):
     """
     This is the abstract dataloader class for the markov bridge models including:
@@ -131,8 +169,12 @@ class MarkovBridgeDataloader(ABC):
     train_dataloader:DataLoader = None
     test_dataloader:DataLoader = None
     validation_dataloader:DataLoader = None
+    dataset_info:dict
+    property_norms:dict
     
-    def __init__(self,config:None):
+    def __init__(self,config:MarkovBridgeDataConfig):
+        self.conditioning = config.conditioning
+        """
         if config is not None:
             self.has_context_discrete = config.has_context_discrete    
             self.has_context_continuous = config.has_context_continuous
@@ -143,7 +185,7 @@ class MarkovBridgeDataloader(ABC):
             self.discrete_dimensions = config.discrete_dimensions
             self.continuos_dimensions = config.continuos_dimensions
             self.batch_size = config.batch_size
-    
+        """
     def get_databach_keys(self):
         return None
     
@@ -280,3 +322,6 @@ class MarkovBridgeDataloader(ABC):
             return repeated_sample
         return sample
 
+    def get_property_norms(self):
+        property_norms = compute_mean_mad_from_dataloader(self.train(),self.conditioning)
+        return property_norms

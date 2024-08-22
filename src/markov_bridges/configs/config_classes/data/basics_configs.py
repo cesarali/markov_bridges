@@ -26,6 +26,7 @@ class MarkovBridgeDataConfig:
     max_training_size: int = None
     max_test_size:int = None
 
+    conditioning:list = field(default_factory=lambda:[])
     fields:list = field(default_factory=lambda:[])
 
 @dataclass
