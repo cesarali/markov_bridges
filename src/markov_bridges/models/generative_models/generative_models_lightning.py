@@ -1,9 +1,14 @@
 import torch
 import json
-import lightning as L
 from abc import ABC, abstractmethod
+from dataclasses import asdict
+
+import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint
+
 from markov_bridges.utils.experiment_files import ExperimentFiles
+from markov_bridges.utils.training import EpochProgressBar
+
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
 from markov_bridges.data.qm9.qm9_points_dataloader import QM9PointDataloader
 from markov_bridges.models.pipelines.abstract_pipeline import AbstractPipeline
@@ -32,6 +37,7 @@ class AbstractGenerativeModelL(ABC):
         ):
         """
         """
+
         if experiment_files is not None:
             self.experiment_files = experiment_files
         elif config is not None:
@@ -39,7 +45,7 @@ class AbstractGenerativeModelL(ABC):
 
         if config is not None:
             self.define_from_config(config)
-            self.experiment_files.create_directories(config)
+            # self.experiment_files.create_directories(config)
         elif experiment_source is not None:
             self.define_from_dir(experiment_source,checkpoint_type)
 
@@ -49,6 +55,12 @@ class AbstractGenerativeModelL(ABC):
             config_json["delete"] = False
         config = self.config_type(**config_json)   
         return config
+    
+    def save_config(self):
+        if self.config is not None:
+            config_as_dict = asdict(self.config)
+            with open(self.experiment_files.config_path, "w") as file:
+                json.dump(config_as_dict, file, indent=4)
     
     @abstractmethod
     def define_from_config(self,config):
@@ -71,16 +83,23 @@ class AbstractGenerativeModelL(ABC):
                                                    monitor="val_loss",
                                                    filename="best-{epoch:02d}")
         
+        # Last epoch checkpoint
         checkpoint_callback_last = ModelCheckpoint(dirpath=self.experiment_files.experiment_dir,
-                                                   monitor="train_loss",
+                                                   save_top_k=1,
+                                                   monitor=None,
                                                    filename="last-{epoch:02d}")
+        
+        progress_bar = EpochProgressBar()  # Use custom progress bar
 
         trainer = L.Trainer(default_root_dir=self.experiment_files.experiment_dir,
                             max_epochs=self.config.trainer.number_of_epochs,
-                            callbacks=[checkpoint_callback_best,
-                                       checkpoint_callback_last],
-                            accelerator="auto",
-                            devices=self.config.trainer.device)
+                            callbacks=[progress_bar, 
+                                       checkpoint_callback_best,
+                                       checkpoint_callback_last, 
+                                       ],
+                            accelerator=self.config.trainer.accelerator,
+                            devices=self.config.trainer.devices,
+                            strategy=self.config.trainer.strategy)
         
         return trainer
     
@@ -89,7 +108,10 @@ class AbstractGenerativeModelL(ABC):
         trainer.fit(self.model, 
                     self.dataloader.train(), 
                     self.dataloader.validation())
-       
-        all_metrics = self.test_evaluation() if len(self.config.trainer.metrics) else None
+        
+        self.save_config()
+        trainer.test(ckpt_path="best", dataloaders=self.dataloader.test())
+        
+        # all_metrics = self.test_evaluation() if len(self.config.trainer.metrics) else None
 
         return all_metrics

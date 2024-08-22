@@ -312,29 +312,35 @@ class MixedForwardMapL(EMA,L.LightningModule):
         return databatch
     
     def training_step(self, batch, batch_idx):
+
+        # loss
         optimizer = self.optimizers()
         # obtain loss
         databatach = self.prepare_batch(batch)
         # sample bridge
         discrete_sample, continuous_sample = self.sample_bridge(databatach)
         loss,discrete_loss_,continuous_loss_ = self.loss(databatach, discrete_sample, continuous_sample)
-        # optimization
         optimizer.zero_grad()
         self.manual_backward(loss)
+
         # clip grad norm
         if self.config.trainer.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.parameters(), self.config.trainer.clip_max_norm)
         optimizer.step()
+
         # handle schedulers
         sch = self.lr_schedulers()
         self.handle_scheduler(sch,self.number_of_training_step,loss)
+
         # ema
         if self.do_ema:
             self.update_ema()
+
         self.log('train_loss', loss, on_step=True, prog_bar=True, logger=True)
         self.log('discrete_training_loss', discrete_loss_.mean(), on_step=True, prog_bar=True, logger=True)
         self.log('continuous_training_loss', continuous_loss_.mean(), on_step=True, prog_bar=True, logger=True)
         self.number_of_training_step += 1
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -345,6 +351,15 @@ class MixedForwardMapL(EMA,L.LightningModule):
         self.log('discrete_val_loss', discrete_loss_.mean(), on_step=True, prog_bar=True, logger=True)
         self.log('continuous_val_loss', continuous_loss_.mean(), on_step=True, prog_bar=True, logger=True)
         return loss
+    
+    def test_step(self, batch, batch_idx):
+        self.pipeline = CMBPipeline(self.config,self.model,self.dataloader)
+        self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
+
+
+
+
+    # train utils 
 
     def configure_optimizers(self):
         """

@@ -45,8 +45,8 @@ class LankhPianoRollDataloader(MarkovBridgeDataloader):
 
         self.descramble_key = descramble_key
 
-        self.train_dataloader = DataLoader(train_data, batch_size=self.music_config.batch_size, shuffle=True)
-        self.test_dataloader = DataLoader(test_data,batch_size=self.music_config.batch_size, shuffle=True)
+        self.train_dataloader = DataLoader(train_data, batch_size=self.music_config.batch_size, shuffle=True, num_workers=self.data_config.num_workers, pin_memory=self.data_config.pin_memory)
+        self.test_dataloader = DataLoader(test_data,batch_size=self.music_config.batch_size, shuffle=False, num_workers=self.data_config.num_workers, pin_memory=self.data_config.pin_memory)
         self.validation_dataloader = self.test_dataloader
 
     def get_target_data(self,data_config:MarkovBridgeDataConfig):

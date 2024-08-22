@@ -38,8 +38,11 @@ class BasicTrainerConfig:
     weight_decay:float =  0.0001
     lr_decay:float =  0.999
 
-    device:str = "auto"
-    distributed: bool = False
+    accelerator: str="cpu"
+    devices: str="auto"
+    strategy: str="auto"
+
+    distributed: bool=False
 
     windows: bool = True
     berlin: bool = True

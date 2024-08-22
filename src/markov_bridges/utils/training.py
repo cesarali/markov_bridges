@@ -1,4 +1,31 @@
 import torch
+from lightning.pytorch.callbacks import TQDMProgressBar
+
+
+class EpochProgressBar(TQDMProgressBar):
+    def __init__(self):
+        super().__init__()
+        self.main_progress_bar = None
+
+    def init_train_tqdm(self):
+        total_epochs = self.trainer.max_epochs
+        bar = super().init_train_tqdm()
+        bar.total = total_epochs
+        bar.n = 0  # Start at epoch 0
+        bar.refresh_rate = 0  # Disable batch-level updates
+        self.main_progress_bar = bar
+        return bar
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        super().on_train_epoch_end(trainer, pl_module)
+        self.main_progress_bar.update(1)
+        self.main_progress_bar.refresh()
+
+    def on_train_end(self, trainer, pl_module):
+        super().on_train_end(trainer, pl_module)
+        self.main_progress_bar.close()
+
+
 
 def nametuple_to_device(obj, device):
     for attribute in vars(obj):
@@ -89,4 +116,5 @@ def compute_variance_torch(self,t,x1,x0):
     second_moment = self.compute_second_moment(t,x1,x0)
 
     return second_moment - mean**2
+
 

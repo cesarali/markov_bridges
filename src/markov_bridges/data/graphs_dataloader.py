@@ -102,8 +102,8 @@ class GraphDataloader(MarkovBridgeDataloader):
         test_data = self.get_data_divisions(test_data,self.graph_config)
         test_data = MarkovBridgeDatasetNew(test_data)
 
-        self.train_dataloader = DataLoader(train_data, batch_size=self.graph_config.batch_size, shuffle=True)
-        self.test_dataloader = DataLoader(test_data,batch_size=self.graph_config.batch_size, shuffle=True)
+        self.train_dataloader = DataLoader(train_data, batch_size=self.graph_config.batch_size, shuffle=True, num_workers=self.data_config.num_workers, pin_memory=self.data_config.pin_memory)
+        self.test_dataloader = DataLoader(test_data,batch_size=self.graph_config.batch_size, shuffle=True, num_workers=self.data_config.num_workers, pin_memory=self.data_config.pin_memory)
         self.validation_dataloader = self.test_dataloader
         
         self.fields = test_data.data_batch_keys
