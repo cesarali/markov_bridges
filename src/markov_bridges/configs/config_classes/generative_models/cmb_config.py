@@ -8,7 +8,8 @@ from markov_bridges import data_path
 
 # model config
 from markov_bridges.configs.config_classes.networks.mixed_networks_config import (
-    MixedDeepMLPConfig
+    MixedDeepMLPConfig,
+    MixedEGNN_dynamics_QM9Config
 )
 
 from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs import (
@@ -18,6 +19,7 @@ from markov_bridges.configs.config_classes.pipelines.cjb_thermostat_configs impo
     InvertedExponentialThermostatConfig
 )
 
+from markov_bridges.configs.config_classes.data.molecules_configs import QM9Config
 from markov_bridges.configs.config_classes.data.music_configs import LakhPianoRollConfig
 from markov_bridges.configs.config_classes.data.graphs_configs import GraphDataloaderGeometricConfig
 from markov_bridges.configs.config_classes.data.basics_configs import IndependentMixConfig, GaussiansConfig
@@ -28,11 +30,13 @@ image_data_path = os.path.join(data_path,"raw")
 
 data_configs = {"LakhPianoRoll":LakhPianoRollConfig,
                 "GraphDataloaderGeometric":GraphDataloaderGeometricConfig,
+                "QM9":QM9Config,
                 "IndependentMix":IndependentMixConfig,
                 "Gaussians":GaussiansConfig}
 
 mixed_network_configs = {
     "MixedDeepMLP":MixedDeepMLPConfig,
+    "MixedEGNN_dynamics_QM9":MixedEGNN_dynamics_QM9Config,
 }
 
 thermostat_configs = {
@@ -68,6 +72,8 @@ class CMBConfig:
     # process config
     continuous_loss_type:str = "flow" # flow, regression, drift
     brownian_sigma: float = 0.1
+    conditioning:List = field(default_factory=lambda:[])
+    
     # data
     data: LakhPianoRollConfig|IndependentMixConfig = field(default_factory=IndependentMixConfig)#lp
     # process 

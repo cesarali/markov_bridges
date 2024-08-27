@@ -238,7 +238,7 @@ class GammaNetwork(torch.nn.Module):
 
         # Rescale to [gamma_0, gamma_1]
         gamma = self.gamma_0 + (self.gamma_1 - self.gamma_0) * normalized_gamma
-
+        
         return gamma
 
 
@@ -314,7 +314,6 @@ class EnVariationalDiffusion(torch.nn.Module):
 
     def phi(self, x, t, node_mask, edge_mask, context):
         net_out = self.dynamics._forward(t, x, node_mask, edge_mask, context)
-
         return net_out
 
     def inflate_batch_array(self, array, target):

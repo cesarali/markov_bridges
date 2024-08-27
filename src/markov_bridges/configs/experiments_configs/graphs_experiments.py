@@ -57,7 +57,7 @@ def continue_graph_experiment(experiment_dir):
 if __name__=="__main__":
     start = True
     if start:
-        experiment_config = get_graph_experiment(number_of_epochs=600)
+        experiment_config = get_graph_experiment(number_of_epochs=200)
         #experiment_files = ExperimentFiles(experiment_name="cjb",
         #                                   experiment_type="graph",
         #                                   experiment_indentifier="old",
@@ -67,7 +67,7 @@ if __name__=="__main__":
         #trainer.train()
         experiment_files = ExperimentFiles(experiment_name="cjb",
                                            experiment_type="graph",
-                                           experiment_indentifier="lightning2",
+                                           experiment_indentifier="lightning3",
                                            delete=True)    
         cjb = CJBL(experiment_config,experiment_files)
         cjb.train()

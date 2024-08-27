@@ -3,6 +3,7 @@ from typing import Literal
 
 @dataclass
 class QM9Config:
+    name:str="QM9"
     batch_size:int = 32
     num_workers:int = 12
     filter_n_atoms:int = None
@@ -18,7 +19,24 @@ class QM9Config:
     dataset:str = 'qm9'
     datadir:str = r"C:\Users\cesar\Desktop\Projects\DiffusiveGenerativeModelling\OurCodes\markov_bridges\data\raw\graph"
     wandb:bool = False
-
+    
+    context_node_nf:int=None
+    vocab_size:int = None
+    property_norms:dict = None
+    
+    has_target_discrete:int = True
+    has_target_continuous:int = True
+    continuos_dimensions:int = 3
+    discrete_dimensions:int = None 
+    
+    context_node_nf:int=None
+    vocab_size:int = None
+    property_norms:dict = None
+    
+    has_target_discrete:int = True
+    has_target_continuous:int = True
+    continuos_dimensions:int = 3
+    discrete_dimensions:int = None
 
 #### make configuration class for LP dataset
 @dataclass
@@ -53,3 +71,4 @@ class LPConfig:
     train_path : str = "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/train.pt" #path for train set to load, preprocess and return via the dataloader
     valid_path : str = "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/validation.pt" #path for validation set to load, preprocess and return via the dataloader
     test_path : str = "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/test.pt" #path for test set to load, preprocess and return via the dataloader
+     

@@ -26,8 +26,6 @@ from markov_bridges.configs.config_classes.trainers.trainer_config import EDMGTr
 image_data_path = os.path.join(data_path,"raw")
 
 
-
-
 @dataclass
 class NoisingModelConfig:
     # egnn dynammics
@@ -42,6 +40,7 @@ class NoisingModelConfig:
     normalization_factor: float = 1
     aggregation_method: str = 'sum'
 
+    ema_decay:float = 0.999
     # noising parameters
     condition_time:bool = True
     probabilistic_model: str = 'diffusion'         # 'flow | diffusion | diffusion_ddpm'

@@ -1,16 +1,12 @@
-import torch
-import torch.nn as nn
-import lightning as L
-from torch.optim import Adam
-import numpy as np
-
-import numpy as np
-import torch
-from torch.optim.adam import Adam
-
-from typing import List
-from dataclasses import dataclass,field
+from typing import Tuple
 from collections import namedtuple
+
+import torch
+from torch import nn
+import lightning as L
+from torch.optim.adam import Adam
+from torch.distributions import Categorical,Normal
+from torch.nn.functional import softmax
 
 from torch.optim.lr_scheduler import(
     ReduceLROnPlateau,
@@ -19,63 +15,104 @@ from torch.optim.lr_scheduler import(
     StepLR
 )
 
-from markov_bridges.models.generative_models.generative_models_lightning import AbstractGenerativeModelL
-from markov_bridges.models.metrics.metrics_utils import LogMetrics
-
-from torch.nn.functional import softmax
-
-
-from torch.distributions import Categorical,Normal
-import torch
-import numpy as np
-from torch.optim.adam import Adam
-from markov_bridges.models.networks.utils.ema import EMA
 from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
-from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
 
-import torch
-from torch import nn
+from markov_bridges.data.dataloaders_utils import get_dataloaders
+from markov_bridges.data.qm9.qm9_points_dataloader import QM9PointDataNameTupleCMB
+from markov_bridges.models.pipelines.thermostat_utils import load_thermostat
+from markov_bridges.models.networks.temporal.mixed.mixed_networks_utils import load_mixed_network
+
+from markov_bridges.models.generative_models.generative_models_lightning import AbstractGenerativeModelL
+from markov_bridges.models.networks.utils.ema import EMA
+from markov_bridges.utils.experiment_files import ExperimentFiles
+from markov_bridges.data.abstract_dataloader import MarkovBridgeDataloader
+from markov_bridges.models.pipelines.pipeline_cmb import CMBPipeline
+from markov_bridges.models.pipelines.thermostats import Thermostat
+
+from markov_bridges.models.networks.temporal.edmg.helper_distributions import (
+    DistributionNodes,
+    DistributionProperty
+)
+
+from markov_bridges.utils import equivariant_diffusion as diffusion_utils
+from markov_bridges.models.metrics.metrics_utils import LogMetrics
+from markov_bridges.utils.shapes import nodes_and_edges_masks
 
 from markov_bridges.utils.shapes import right_shape,right_time_size,where_to_go_x
-from markov_bridges.models.networks.utils.ema import EMA
-from markov_bridges.models.pipelines.thermostat_utils import load_thermostat
-from markov_bridges.configs.config_classes.generative_models.cmb_config import CMBConfig
-from markov_bridges.utils.shapes import right_shape,right_time_size
-from markov_bridges.models.pipelines.thermostats import Thermostat
-from markov_bridges.models.networks.temporal.mixed.mixed_networks_utils import load_mixed_network
 from markov_bridges.data.abstract_dataloader import MarkovBridgeDataNameTuple
-from markov_bridges.data.dataloaders_utils import get_dataloaders
-from markov_bridges.utils.experiment_files import ExperimentFiles
-from markov_bridges.models.pipelines.pipeline_cmb import CMBPipeline
+
+from markov_bridges.utils.equivariant_diffusion import (
+    assert_mean_zero_with_mask, 
+    remove_mean_with_mask,
+    check_mask_correct, 
+    sample_center_gravity_zero_gaussian_with_mask,
+    random_rotation,
+    assert_correctly_masked
+)
+from markov_bridges.data.qm9.utils import prepare_context
+from markov_bridges.configs.config_classes.networks.mixed_networks_config import (
+    MixedEGNN_dynamics_QM9Config,
+)
 
 class MixedForwardMapL(EMA,L.LightningModule):
 
-    def __init__(self,config:CMBConfig):
+    nodes_dist:DistributionNodes
+    prop_dist:DistributionProperty
+
+    def __init__(self,config:CMBConfig,dataloader:MarkovBridgeDataloader,save=True):
         self.automatic_optimization = False
         EMA.__init__(self,config)
         L.LightningModule.__init__(self)
-        self.save_hyperparameters()
+        if save:
+            self.save_hyperparameters()
+
         # Important: This property activates manual optimization.
         self.automatic_optimization = False
         self.config = config
 
         self.vocab_size = self.config.data.vocab_size
+        self.continuos_dimensions = config.data.continuos_dimensions
+
+        self.in_node_nf = 1 # just the categories
+        self.property_norms = dataloader.property_norms
+
         self.has_target_discrete = config.data.has_target_discrete 
         self.has_target_continuous = config.data.has_target_continuous 
 
-        self.define_deep_models(config)
-        self.define_bridge_parameters(config)
-        self.DatabatchNameTuple = namedtuple("DatabatchClass", self.config.data.fields)
+        self.dataset_info = dataloader.dataset_info
+        self.databatch_keys = dataloader.get_databach_keys()
+
+        self.define_deep_models()
+        self.define_bridge_parameters()
+        self.define_sample_distributions(dataloader)
+        
+        self.DatabatchNameTuple = namedtuple("DatabatchClass",
+                                             self.databatch_keys)
         self.init_ema()
 
-    def define_deep_models(self,  config: CMBConfig):
-        self.mixed_network = load_mixed_network(config)
+    def define_deep_models(self):
+        self.mixed_network = load_mixed_network(self.config)
         self.discrete_loss_nn = nn.CrossEntropyLoss(reduction='none')
         self.continuous_loss_nn = nn.MSELoss(reduction='none')
 
-    def define_bridge_parameters(self,  config: CMBConfig):
-        self.continuous_loss_type = config.continuous_loss_type
-        self.discrete_bridge_: Thermostat = load_thermostat(config)
+    def define_sample_distributions(self,dataloader:MarkovBridgeDataloader):
+        self.nodes_dist = None
+        if hasattr(dataloader,"dataset_info"):
+            histogram = dataloader.dataset_info['n_nodes']
+            self.nodes_dist = DistributionNodes(histogram)
+
+        self.prop_dist = None
+        if len(self.config.mixed_network.conditioning) > 0:
+            self.prop_dist = DistributionProperty(dataloader.train(), 
+                                                  self.config.mixed_network.conditioning,
+                                                  number_string=self.config.mixed_network.number_string)
+            
+        if self.prop_dist is not None:
+            self.prop_dist.set_normalizer(self.property_norms)
+
+    def define_bridge_parameters(self):
+        self.continuous_loss_type = self.config.continuous_loss_type
+        self.discrete_bridge_: Thermostat = load_thermostat(self.config)
         self.continuous_bridge_ = None
     #====================================================================
     # INTERPOLATIONS AND/OR BRIDGES
@@ -199,11 +236,14 @@ class MixedForwardMapL(EMA,L.LightningModule):
 
         # Train What is Needed
         if self.has_target_discrete:
-            discrete_loss_ = self.discrete_loss(databatch,discrete_head,discrete_sample).mean()
-            full_loss += discrete_loss_
+            discrete_loss_ = self.discrete_loss(databatch,discrete_head,discrete_sample)
+            discrete_loss_ = discrete_loss_.reshape(discrete_sample.size(0),discrete_sample.size(1))
+            full_loss += discrete_loss_.sum(axis=1).mean()
         if self.has_target_continuous:
-            continuous_loss_ = self.continuous_loss(databatch,continuous_head,continuous_sample).mean()
-            full_loss += continuous_loss_
+            continuous_loss_ = self.continuous_loss(databatch,continuous_head,continuous_sample)
+            continuous_loss_ = continuous_loss_.reshape(continuous_sample.size(0),continuous_sample.size(1))
+            full_loss += continuous_loss_.sum(axis=1).mean()
+
         return full_loss,discrete_loss_,continuous_loss_
     
     def discrete_loss(self, databatch:MarkovBridgeDataNameTuple, discrete_head, discrete_sample=None): 
@@ -263,43 +303,63 @@ class MixedForwardMapL(EMA,L.LightningModule):
         P_x0_to_x1 = self.multivariate_telegram_conditional(x1, x0, t=1., t0=0.)
         conditional_transition_probability = (P_x_to_x1 * P_x0_to_x) / P_x0_to_x1
         return conditional_transition_probability
+        
     #============================================================================
     # TRAINING
     #============================================================================
+    def prepare_batch(self,batch):
+        databatch = self.DatabatchNameTuple(*batch)
+        return databatch
+    
     def training_step(self, batch, batch_idx):
+
+        # loss
         optimizer = self.optimizers()
         # obtain loss
-        databatach = self.DatabatchNameTuple(*batch)
+        databatach = self.prepare_batch(batch)
         # sample bridge
         discrete_sample, continuous_sample = self.sample_bridge(databatach)
         loss,discrete_loss_,continuous_loss_ = self.loss(databatach, discrete_sample, continuous_sample)
-        # optimization
         optimizer.zero_grad()
         self.manual_backward(loss)
+
         # clip grad norm
         if self.config.trainer.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.parameters(), self.config.trainer.clip_max_norm)
         optimizer.step()
+
         # handle schedulers
         sch = self.lr_schedulers()
         self.handle_scheduler(sch,self.number_of_training_step,loss)
+
         # ema
         if self.do_ema:
             self.update_ema()
+
         self.log('train_loss', loss, on_step=True, prog_bar=True, logger=True)
-        self.log('discrete_training_loss', discrete_loss_, on_step=True, prog_bar=True, logger=True)
-        self.log('continuous_training_loss', continuous_loss_, on_step=True, prog_bar=True, logger=True)
+        self.log('discrete_training_loss', discrete_loss_.mean(), on_step=True, prog_bar=True, logger=True)
+        self.log('continuous_training_loss', continuous_loss_.mean(), on_step=True, prog_bar=True, logger=True)
         self.number_of_training_step += 1
+
         return loss
 
     def validation_step(self, batch, batch_idx):
-        databatach = self.DatabatchNameTuple(*batch)
+        databatach = self.prepare_batch(batch)
         discrete_sample, continuous_sample = self.sample_bridge(databatach)
         loss,discrete_loss_,continuous_loss_ = self.loss(databatach, discrete_sample, continuous_sample)
         self.log('val_loss', loss, on_step=False, prog_bar=True, logger=True)
-        self.log('discrete_val_loss', discrete_loss_, on_step=True, prog_bar=True, logger=True)
-        self.log('continuous_val_loss', continuous_loss_, on_step=True, prog_bar=True, logger=True)
+        self.log('discrete_val_loss', discrete_loss_.mean(), on_step=True, prog_bar=True, logger=True)
+        self.log('continuous_val_loss', continuous_loss_.mean(), on_step=True, prog_bar=True, logger=True)
         return loss
+    
+    def test_step(self, batch, batch_idx):
+        self.pipeline = CMBPipeline(self.config,self.model,self.dataloader)
+        self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
+
+
+
+
+    # train utils 
 
     def configure_optimizers(self):
         """
@@ -359,6 +419,156 @@ class MixedForwardMapL(EMA,L.LightningModule):
                 elif self.config.trainer.scheduler == "reduce":
                     scheduler.step(loss_)
 
+class MixedForwardMapMoleculesL(MixedForwardMapL):
+
+    def __init__(self,config:CMBConfig,dataloader:MarkovBridgeDataloader,save=True):
+        MixedForwardMapL.__init__(self,config,dataloader,save)
+
+    def prepare_batch(self,databatch)->QM9PointDataNameTupleCMB:
+        """
+        cmb requieres as batch a name tuble that contains the noise sample 
+        and where all the samples are of size batch_size,dimensions
+
+        for molecules the continuos_variables dimensions = number_of_atoms*3 (positions)
+                          discrete_variables dimensions = number_of_atoms*1 (discrete category)
+
+        """
+        dtype = torch.float32
+        x = databatch['positions'].to(dtype)
+        node_mask = databatch['atom_mask'].to(dtype).unsqueeze(2)
+        edge_mask = databatch['edge_mask'].to(dtype)
+        one_hot = databatch['one_hot'].to(dtype)
+        charges = databatch['charges'].to(x.device, dtype)
+
+        x,h = self.augment_noise(x,one_hot,node_mask,charges)
+        databatch_nametuple = self.cmb_source_and_nametuple(databatch,x,h,self.config)
+        return databatch_nametuple
+
+    def loss(self,databatch:QM9PointDataNameTupleCMB,discrete_sample,continuous_sample):
+        full_loss,discrete_loss_,continuous_loss_ = super().loss(databatch,discrete_sample,continuous_sample)
+        continuous_loss_ = continuous_loss_.reshape(databatch.batch_size,databatch.max_num_atoms,self.continuos_dimensions)
+        continuous_loss_ = continuous_loss_.sum(axis=-1)
+
+        # masks
+        continuous_loss_ = continuous_loss_*databatch.atom_mask
+        discrete_loss_ = discrete_loss_*databatch.atom_mask
+
+        if self.has_target_continuous:
+            full_loss = torch.Tensor([0.]).to(continuous_sample.device)
+        if self.has_target_discrete:
+            full_loss = torch.Tensor([0.]).to(discrete_sample.device)
+
+        # Train What is Needed
+        if self.has_target_discrete:
+            full_loss += discrete_loss_.sum(axis=1).mean()
+        if self.has_target_continuous:
+            full_loss += continuous_loss_.sum(axis=1).mean()
+
+        return full_loss,discrete_loss_,continuous_loss_
+
+    def augment_noise(self,x,one_hot,node_mask,charges,augment_noise=0.,data_augmentation=False):
+        """
+        """
+        # add noise 
+        x = remove_mean_with_mask(x, node_mask)
+        if augment_noise > 0:
+            # Add noise eps ~ N(0, augment_noise) around points.
+            eps = sample_center_gravity_zero_gaussian_with_mask(x.size(), x.device, node_mask)
+            x = x + eps * augment_noise
+        x = remove_mean_with_mask(x, node_mask)
+        if data_augmentation:
+            x = random_rotation(x).detach()
+
+        check_mask_correct([x, one_hot, charges], node_mask)
+        assert_mean_zero_with_mask(x, node_mask)
+        h = {'categorical': one_hot, 'integer': charges}
+        return x, h
+
+    def cmb_source_and_nametuple(self,databatch,x,h,config)->Tuple[int,int,QM9PointDataNameTupleCMB]:
+        """
+        creates the source data and defines the name tuple
+        creates the context
+        takes only the properties requiered in the conditioning
+        """
+        # Keys and databatch info
+        node_mask = databatch['atom_mask'].to(self.dtype).unsqueeze(2)
+        conditioning = config.mixed_network.conditioning
+        basic_key_strings = "num_atoms source_discrete source_continuous target_discrete target_continuous"
+        mask_key_strings = "atom_mask edge_mask context time batch_size max_num_atoms"
+        if len(conditioning) > 0:
+            condition_key_strings = " ".join(conditioning)
+            all_key_strings = basic_key_strings+" "+condition_key_strings+" "+mask_key_strings
+        else:
+            all_key_strings = basic_key_strings+" "+mask_key_strings
+        DatabatchNametuple = namedtuple("DatabatchClass", all_key_strings)
+
+        # CMB only handles shape of lenght 2
+        target_discrete = torch.argmax(h["categorical"],dim=2) # NEEDED ONLY TO REMOVES ONE HOT
+        vocab_size = self.vocab_size
+        data_size = target_discrete.size(0)
+        discrete_dimensions = target_discrete.size(1)
+        target_continuous = x.reshape(data_size,-1)
+        continuous_dimensions = target_continuous.size(1)
+
+        #Discrete SOURCE
+        uniform_probability = torch.full((vocab_size,),1./vocab_size)
+        source_discrete = Categorical(uniform_probability).sample((data_size,discrete_dimensions)).to(x.device)
+
+        #Continuous SOURCE
+        gaussian_probability = Normal(0.,1.)
+        source_continuous = gaussian_probability.sample((data_size,continuous_dimensions)).to(x.device)
+
+        # Create Time
+        time = torch.rand((data_size,1)).to(x.device,self.dtype)
+
+        # CONTEXT AS TENSOR
+        context = None
+        if len(conditioning) > 0:
+            context = prepare_context(conditioning, 
+                                      databatch, 
+                                      self.property_norms).to(x.device, self.dtype)
+            assert_correctly_masked(context, node_mask)
+            
+        items_ = [databatch["num_atoms"],source_discrete,source_continuous,target_discrete,target_continuous]
+        for prop in conditioning:
+            items_.append(databatch[prop])
+        items_.extend([databatch["atom_mask"].to(self.dtype),
+                       databatch["edge_mask"].to(self.dtype),
+                       context,
+                       time,
+                       data_size,
+                       discrete_dimensions])
+        databatch_nametuple = DatabatchNametuple(*items_)
+        return databatch_nametuple
+    
+    def sample_sizes_and_masks(self,sample_size,device,context=None):
+        max_n_nodes = self.dataset_info['max_n_nodes']
+        nodesxsample = self.nodes_dist.sample(sample_size)
+        node_mask,edge_mask= nodes_and_edges_masks(nodesxsample,max_n_nodes,device)
+        batch_size = node_mask.size(0)
+        
+        # TODO FIX: This conditioning just zeros.
+        if len(self.config.mixed_network.conditioning) > 0:
+            if context is None:
+                context = self.prop_dist.sample_batch(nodesxsample)
+            context = context.unsqueeze(1).repeat(1, max_n_nodes, 1).to(device) * node_mask
+        else:
+            context = None
+        return max_n_nodes,nodesxsample,node_mask,edge_mask,context
+    
+    def sample_combined_position_feature_noise(self, n_samples, n_nodes, node_mask):
+        """
+        Samples mean-centered normal noise for z_x, and standard normal noise for z_h.
+        """
+        z_x = diffusion_utils.sample_center_gravity_zero_gaussian_with_mask(
+            size=(n_samples, n_nodes, self.continuos_dimensions), device=node_mask.device,
+            node_mask=node_mask)
+        z_h = diffusion_utils.sample_gaussian_with_mask(
+            size=(n_samples, n_nodes, self.in_node_nf), device=node_mask.device,
+            node_mask=node_mask)
+        z = torch.cat([z_x, z_h], dim=2)
+        return z
+    
 class CMBL(AbstractGenerativeModelL):
 
     config_type = CMBConfig
@@ -366,7 +576,10 @@ class CMBL(AbstractGenerativeModelL):
     def define_from_config(self,config:CMBConfig):
         self.config = config
         self.dataloader = get_dataloaders(self.config)
-        self.model = MixedForwardMapL(self.config)
+        if isinstance(self.config.mixed_network,MixedEGNN_dynamics_QM9Config):
+            self.model = MixedForwardMapMoleculesL(self.config,self.dataloader)
+        else:
+            self.model = MixedForwardMapL(self.config,self.dataloader)
         self.pipeline = CMBPipeline(self.config,self.model,self.dataloader)
         self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
 
@@ -383,7 +596,15 @@ class CMBL(AbstractGenerativeModelL):
         # obtain checkpoint path
         CKPT_PATH = self.experiment_files.get_lightning_checkpoint_path(checkpoint_type)
         # load model
-        self.model = MixedForwardMapL.load_from_checkpoint(CKPT_PATH, config=self.config)
+        if isinstance(self.config.mixed_network,MixedEGNN_dynamics_QM9Config):
+            self.model = MixedForwardMapMoleculesL.load_from_checkpoint(CKPT_PATH,
+                                                                        config=self.config,
+                                                                        dataloader=self.dataloader)
+        else:
+            self.model = MixedForwardMapL.load_from_checkpoint(CKPT_PATH,
+                                                               config=self.config,
+                                                               dataloader=self.dataloader)
+        
         self.pipeline = CMBPipeline(self.config,self.model,self.dataloader)
         self.log_metrics = LogMetrics(self,metrics_configs_list=self.config.trainer.metrics)
         return self.config

@@ -43,16 +43,16 @@ class DistributionNodes:
 
 
 class DistributionProperty:
-    def __init__(self, dataloader, properties, num_bins=1000, normalizer=None):
+
+    def __init__(self, dataloader, conditioning, num_bins=1000, normalizer=None, number_string="num_atoms"):
         self.num_bins = num_bins
         self.distributions = {}
-        self.properties = properties
-        for prop in properties:
+        self.properties = conditioning
+        for prop in conditioning:
             self.distributions[prop] = {}
-            self._create_prob_dist(dataloader.dataset.data['num_atoms'],
+            self._create_prob_dist(dataloader.dataset.data[number_string],
                                    dataloader.dataset.data[prop],
                                    self.distributions[prop])
-
         self.normalizer = normalizer
 
     def set_normalizer(self, normalizer):
