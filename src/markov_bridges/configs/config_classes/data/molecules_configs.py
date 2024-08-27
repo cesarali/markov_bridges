@@ -17,7 +17,7 @@ class QM9Config:
     num_pts_valid:int  =  -1
     
     dataset:str = 'qm9'
-    datadir:str = r"C:\Users\cesar\Desktop\Projects\DiffusiveGenerativeModelling\OurCodes\markov_bridges\data\raw\graph"
+    datadir:str = r"/home/piazza"
     wandb:bool = False
     
     context_node_nf:int=None
