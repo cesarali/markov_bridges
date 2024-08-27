@@ -38,8 +38,8 @@ class BasicTrainerConfig:
     weight_decay:float =  0.0001
     lr_decay:float =  0.999
 
-    accelerator: str="cpu"
-    devices: str="auto"
+    accelerator: str="gpu"
+    devices: str="3"
     strategy: str="auto"
 
     distributed: bool=False
