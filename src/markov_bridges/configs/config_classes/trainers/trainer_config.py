@@ -39,7 +39,7 @@ class BasicTrainerConfig:
     lr_decay:float =  0.999
 
     accelerator: str="gpu"
-    devices: str="3"
+    devices: list=field(default_factory=lambda: [1,2,3])
     strategy: str="auto"
 
     distributed: bool=False
