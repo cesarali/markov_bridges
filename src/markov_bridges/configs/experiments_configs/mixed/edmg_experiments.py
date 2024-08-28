@@ -2,7 +2,8 @@ from markov_bridges.configs.config_classes.data.molecules_configs import QM9Conf
 
 from markov_bridges.configs.config_classes.generative_models.edmg_config import (
     EDMGConfig,
-    NoisingModelConfig
+    NoisingModelConfig,
+    EDMG_LPConfig
 )
 
 from markov_bridges.models.deprecated.generative_models.edmg import EDMG
@@ -35,7 +36,7 @@ def get_edmg_experiment():
     return model_config
 
 def get_edmg_lp_experiment():
-    model_config = EDMGConfig()
+    model_config = EDMG_LPConfig()
     model_config.data = LPConfig()
     model_config.noising_model = NoisingModelConfig()
     model_config.trainer = EDMGTrainerConfig(number_of_epochs=200,
