@@ -45,8 +45,15 @@ class LPConfig:
     
     num_workers : int = 6 #number of subprocesses used to load the data (0 = sequantial data loading: may create a bottleneck)
 
-    max_num_protein_nodes : int = 500 #max number of nodes a protein can have to pass the filter in the collate function of the dataloader
+    ## filters for instances
+    min_num_protein_nodes : int = 150
+    max_num_protein_nodes : int = 400 #max number of nodes a protein can have to pass the filter in the collate function of the dataloader
+    min_num_linker_nodes : int = 5
+    max_num_linker_nodes : int = 20
+    min_num_fragment_nodes : int = 5
+    max_num_fragment_nodes : int = 25
     accept_variable_bs : bool = False #STRONGLY RECOMMENDED:False. if true, the filter that discard instances where protein has more than max_num_protein_nodes nodes is done in the collate funciton (which can result in batches with different number of samples and possibly empty batches). If false, the filtering is done before so that the dataloader receives allready filtered instances
+    ## NOTE: with the new update that includes to filter applying min/max values to all the 3 categories (protein, fragment, linker), accept_variable_bs MUST be False, if True it will raise NotImplementedError.
 
     padding_dependence : Literal["batch", "dataset"] = "batch" #RECOMMENDED: "batch". if "batch", the padding and the corresponding masks are created by the collate function of the dataloader, which means that everything is padded to the max number in the batch (in this way, different batches can have different shapes). If "dataset", the padding is performed with respect to the max number in the entire dataset (train, or valid or test), which means that each batch in each dataset has the same shape, buth the batch in the train has different shape from the batch in the test or valiation. 
 

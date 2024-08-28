@@ -48,11 +48,30 @@ class LPDataloader(MarkovBridgeDataloader):
         valid = torch.load(self.dataset_config.valid_path)
         test = torch.load(self.dataset_config.test_path)
 
-        ### filter for the number of protein nodes if accept_variable_bs == False (recommended; default value)
+        ### filter for the number of protein, fragment and linker nodes if accept_variable_bs == False (mandatory; default value)
         if self.dataset_config.accept_variable_bs == False: #by default this is executed
+            #filter for protein nodes
             train = [instance for instance in train if instance["num_protein_nodes"]<=self.dataset_config.max_num_protein_nodes] #for each element in the list of dictionaries where every dictionary represent an instance, take only those where the number of nodes is below 500
+            train = [instance for instance in train if instance["num_protein_nodes"]>=self.dataset_config.min_num_protein_nodes]
             valid = [instance for instance in valid if instance["num_protein_nodes"]<=self.dataset_config.max_num_protein_nodes]
+            valid = [instance for instance in valid if instance["num_protein_nodes"]>=self.dataset_config.min_num_protein_nodes]
             test = [instance for instance in test if instance["num_protein_nodes"]<=self.dataset_config.max_num_protein_nodes]
+            test = [instance for instance in test if instance["num_protein_nodes"]>=self.dataset_config.min_num_protein_nodes]
+            #filter for linker nodes
+            train = [instance for instance in train if instance["num_linker_gen_nodes"]<=self.dataset_config.max_num_linker_nodes] #for each element in the list of dictionaries where every dictionary represent an instance, take only those where the number of nodes is below 500
+            train = [instance for instance in train if instance["num_linker_gen_nodes"]>=self.dataset_config.min_num_linker_nodes]
+            valid = [instance for instance in valid if instance["num_linker_gen_nodes"]<=self.dataset_config.max_num_linker_nodes]
+            valid = [instance for instance in valid if instance["num_linker_gen_nodes"]>=self.dataset_config.min_num_linker_nodes]
+            test = [instance for instance in test if instance["num_linker_gen_nodes"]<=self.dataset_config.max_num_linker_nodes]
+            test = [instance for instance in test if instance["num_linker_gen_nodes"]>=self.dataset_config.min_num_linker_nodes]
+            #filter for fragment atoms
+            train = [instance for instance in train if instance["num_fragment_nodes"]<=self.dataset_config.max_num_fragment_nodes] #for each element in the list of dictionaries where every dictionary represent an instance, take only those where the number of nodes is below 500
+            train = [instance for instance in train if instance["num_fragment_nodes"]>=self.dataset_config.min_num_fragment_nodes]
+            valid = [instance for instance in valid if instance["num_fragment_nodes"]<=self.dataset_config.max_num_fragment_nodes]
+            valid = [instance for instance in valid if instance["num_fragment_nodes"]>=self.dataset_config.min_num_fragment_nodes]
+            test = [instance for instance in test if instance["num_fragment_nodes"]<=self.dataset_config.max_num_fragment_nodes]
+            test = [instance for instance in test if instance["num_fragment_nodes"]>=self.dataset_config.min_num_fragment_nodes]
+
             #print(f"[INFO]\nNumber of training instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(train)}\nNumber of validation instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(valid)}\nNumber of test instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(test)}\n")
 
         ### select the number of instances to take from each filtered dataset
@@ -176,9 +195,11 @@ class LPDataloader(MarkovBridgeDataloader):
         then padd all values specified in config KEYS_TO_PAD, and finally create the masks for padded things.
         """
         if self.dataset_config.accept_variable_bs: #by default is false so this "if" is not executed
+            raise NotImplementedError("bool True for accept_variable_bs has not been implemented. Set this variable to False.")
+            #OLD: accept True and apply here the filter only for the max num of protein nodes. Now deprecated: True raises NotImplementedError.
             #### filter out instances where the number of protein nosed is > 500 (500 is a parameter that can be set from the dataset config class)
-            print(f"[INFO] filter for max_num_protein nodes at {self.dataset_config.max_num_protein_nodes} is being applied in the collate function. This may cause different batch sizes. Is recommended to use accept_variable_bs=False")
-            data = [instance for instance in data if instance["num_protein_nodes"]<=self.dataset_config.max_num_protein_nodes] #for each element in the list of dictionaries where every dictionary represent an instance, take only those where the number of nodes is below 500
+            #print(f"[INFO] filter for max_num_protein nodes at {self.dataset_config.max_num_protein_nodes} is being applied in the collate function. This may cause different batch sizes. Is recommended to use accept_variable_bs=False")
+            #data = [instance for instance in data if instance["num_protein_nodes"]<=self.dataset_config.max_num_protein_nodes] #for each element in the list of dictionaries where every dictionary represent an instance, take only those where the number of nodes is below 500
 
         #### restyle data in the form of dictionay with unique keys, where to each key there are associated values of all instances
         out = {} #intialize out dictionary: this dictionary will contain unique keys and all the subset values
