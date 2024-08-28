@@ -78,8 +78,9 @@ class QM9PointDataloader(MarkovBridgeDataloader):
         if os.path.exists(dummy_path):
             data_dummy = torch.load(dummy_path)
         else:
-            data_dummy = self.get_databatch()
-            torch.save(data_dummy,dummy_path)
+            #data_dummy = self.get_databatch() #this is wrong because if the dummy file does not exist, the function calls itself in an infinite loop causing RecursionError
+            data_dummy = super().get_databatch() #it the dummy does not exists, we need to call the parent class method get_databatch which retrieves a databatch of instances 
+            torch.save(data_dummy,dummy_path) #save the retrieved databatch for later calls to this child class function
         return data_dummy
 
     def get_databach_keys(self):
