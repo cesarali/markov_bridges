@@ -54,7 +54,7 @@ for file_name in filename_list: #for each train .pkl file
         for i, i_coord in enumerate(positions_protein): #for each protein node and its coordinates
             for j, j_coord in enumerate(positions_protein): #with all other protein nodes (included itself) and their coordinates 
                 dist = math.dist(i_coord, j_coord) #calculate euclidean distance between nodes
-                if dist <= 2.5: #if the distance is below the threshold then the edge exist (in this way also self loop exists)
+                if dist <= 4: #if the distance is below the threshold then the edge exist (in this way also self loop exists)
                     sender_protein_nodes.append(i) #i is sender (in this double iteration i will later be the receiver and  j the sender)
                     receiver_protein_nodes.append(j) #j is receiver
                 del j, j_coord, dist #free mem in loop
@@ -108,7 +108,7 @@ for file_name in filename_list: #for each train .pkl file
         del category_protein, positions_fragment, category_fragment, num_linker_nodes, num_fragment_nodes, num_protein_nodes , sender_protein_nodes, receiver_protein_nodes, protein_chopped_edge_list
         del sender_linker_nodes, receiver_linker_nodes, linker_edge_list, sender_fragment_nodes, receiver_fragment_nodes, fragment_edge_list
     del file, file_name #free mem
-torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/train.pt") #save train
+torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/train_4A.pt") #save train
 del out_list , id_counter , filename_list #free mem
 
 print("Validation conversion")
@@ -156,7 +156,7 @@ for file_name in filename_list: #for each val .pkl file
         for i, i_coord in enumerate(positions_protein): #for each protein node and its coordinates
             for j, j_coord in enumerate(positions_protein): #with all other protein nodes (included itself) and their coordinates 
                 dist = math.dist(i_coord, j_coord) #calculate euclidean distance between nodes
-                if dist <= 2.5: #if the distance is below the threshold then the edge exist (in this way also self loop exists)
+                if dist <= 4: #if the distance is below the threshold then the edge exist (in this way also self loop exists)
                     sender_protein_nodes.append(i) #i is sender (in this double iteration i will later be the receiver and  j the sender)
                     receiver_protein_nodes.append(j) #j is receiver
                 del j, j_coord, dist #free mem in loop
@@ -207,7 +207,7 @@ for file_name in filename_list: #for each val .pkl file
         del category_protein, positions_fragment, category_fragment, num_linker_nodes, num_fragment_nodes, num_protein_nodes , sender_protein_nodes, receiver_protein_nodes, protein_chopped_edge_list
         del sender_linker_nodes, receiver_linker_nodes, linker_edge_list, sender_fragment_nodes, receiver_fragment_nodes, fragment_edge_list
     del file, file_name #free mem
-torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/validation.pt") #save train
+torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/validation_4A.pt") #save train
 del out_list , id_counter , filename_list #free mem
 
 
@@ -256,7 +256,7 @@ for file_name in filename_list: #for each val .pkl file
         for i, i_coord in enumerate(positions_protein): #for each protein node and its coordinates
             for j, j_coord in enumerate(positions_protein): #with all other protein nodes (included itself) and their coordinates 
                 dist = math.dist(i_coord, j_coord) #calculate euclidean distance between nodes
-                if dist <= 2.5: #if the distance is below the threshold then the edge exist (in this way also self loop exists)
+                if dist <= 4: #if the distance is below the threshold then the edge exist (in this way also self loop exists)
                     sender_protein_nodes.append(i) #i is sender (in this double iteration i will later be the receiver and  j the sender)
                     receiver_protein_nodes.append(j) #j is receiver
                 del j, j_coord, dist #free mem in loop
@@ -307,7 +307,7 @@ for file_name in filename_list: #for each val .pkl file
         del category_protein, positions_fragment, category_fragment, num_linker_nodes, num_fragment_nodes, num_protein_nodes , sender_protein_nodes, receiver_protein_nodes, protein_chopped_edge_list
         del sender_linker_nodes, receiver_linker_nodes, linker_edge_list, sender_fragment_nodes, receiver_fragment_nodes, fragment_edge_list
     del file, file_name #free mem
-torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/test.pt") #save train
+torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/test_4A.pt") #save train
 del out_list , id_counter , filename_list #free mem
 
 print("Conversion finished.")
