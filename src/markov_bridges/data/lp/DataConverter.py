@@ -2,9 +2,13 @@
 
 import dill, os, torch, math
 
-train_in_path = "/home/piazza/markov_bridges/LP_Data/ReducedDiffusionDataset/Train" #our training set (input) path
-val_in_path = "/home/piazza/markov_bridges/LP_Data/ReducedDiffusionDataset/Validation" #our validation set (input) path
-test_in_path = "/home/piazza/markov_bridges/LP_Data/ReducedDiffusionDataset/Test" #our test set (input) path
+#train_in_path = "/home/piazza/markov_bridges/LP_Data/ReducedDiffusionDataset/Train" #our training set (input) path
+#val_in_path = "/home/piazza/markov_bridges/LP_Data/ReducedDiffusionDataset/Validation" #our validation set (input) path
+#test_in_path = "/home/piazza/markov_bridges/LP_Data/ReducedDiffusionDataset/Test" #our test set (input) path
+
+train_in_path = "/home/piazza/DiffusionModel/GitHub_GNN_LP_AM/Data/ReducedDiffusionDataset_5samples/Train" #our training set (input) path
+val_in_path = "/home/piazza/DiffusionModel/GitHub_GNN_LP_AM/Data/ReducedDiffusionDataset_5samples/Validation" #our validation set (input) path
+test_in_path = "/home/piazza/DiffusionModel/GitHub_GNN_LP_AM/Data/ReducedDiffusionDataset_5samples/Test" #our test set (input) path
 
 
 
@@ -48,7 +52,7 @@ for file_name in filename_list: #for each train .pkl file
         #### retrieve the number of linker nodes, fragment nodes and protein nodes
         num_linker_nodes, num_fragment_nodes, num_protein_nodes = category_linker.shape[0], category_fragment.shape[0], category_protein.shape[0]
 
-        print("getting protein edge list")
+        #print("getting protein edge list")
         #### for the protein part, build the edge list by adding an edge only if the node distance is <= 2.5 A. the edge list for 1 protein has shape [2, num_existing_edges*2], the *2 is because the graph is undirected
         sender_protein_nodes, receiver_protein_nodes = [], [] #empty list where to store indexes of sender and receiver node of an edge in the protein part
         for i, i_coord in enumerate(positions_protein): #for each protein node and its coordinates
@@ -61,7 +65,7 @@ for file_name in filename_list: #for each train .pkl file
             del i, i_coord #free mem in loop
         protein_chopped_edge_list = [torch.LongTensor(sender_protein_nodes), torch.LongTensor(receiver_protein_nodes)] #edge list after chopping edges above the threshold
 
-        print("getting linker edge list")
+        #print("getting linker edge list")
         #### for the linker part, build the edge list considering that the linker is FC
         sender_linker_nodes, receiver_linker_nodes = [], []
         for i, i_coord in enumerate(positions_linker):
@@ -72,7 +76,7 @@ for file_name in filename_list: #for each train .pkl file
             del i, i_coord
         linker_edge_list = [torch.LongTensor(sender_linker_nodes), torch.LongTensor(receiver_linker_nodes)] 
 
-        print("getting fragment edge list")
+        #print("getting fragment edge list")
         #### for the fragment part build the edge list considering that the fragment is FC
         sender_fragment_nodes, receiver_fragment_nodes = [], []
         for i, i_coord in enumerate(positions_fragment):
@@ -83,7 +87,7 @@ for file_name in filename_list: #for each train .pkl file
             del i, i_coord
         fragment_edge_list = [torch.LongTensor(sender_fragment_nodes), torch.LongTensor(receiver_fragment_nodes)] 
         
-        print("add info to dict")
+        #print("add info to dict")
         #### add all this tensor in the out dictionary
         out["position_linker_gen"] = positions_linker
         out["category_linker_gen"] = category_linker
@@ -108,7 +112,7 @@ for file_name in filename_list: #for each train .pkl file
         del category_protein, positions_fragment, category_fragment, num_linker_nodes, num_fragment_nodes, num_protein_nodes , sender_protein_nodes, receiver_protein_nodes, protein_chopped_edge_list
         del sender_linker_nodes, receiver_linker_nodes, linker_edge_list, sender_fragment_nodes, receiver_fragment_nodes, fragment_edge_list
     del file, file_name #free mem
-torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/train_4A.pt") #save train
+torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset_5samples/train_4A_5samples.pt") #save train
 del out_list , id_counter , filename_list #free mem
 
 print("Validation conversion")
@@ -207,7 +211,7 @@ for file_name in filename_list: #for each val .pkl file
         del category_protein, positions_fragment, category_fragment, num_linker_nodes, num_fragment_nodes, num_protein_nodes , sender_protein_nodes, receiver_protein_nodes, protein_chopped_edge_list
         del sender_linker_nodes, receiver_linker_nodes, linker_edge_list, sender_fragment_nodes, receiver_fragment_nodes, fragment_edge_list
     del file, file_name #free mem
-torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/validation_4A.pt") #save train
+torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset_5samples/validation_4A_5samples.pt") #save train
 del out_list , id_counter , filename_list #free mem
 
 
@@ -307,7 +311,7 @@ for file_name in filename_list: #for each val .pkl file
         del category_protein, positions_fragment, category_fragment, num_linker_nodes, num_fragment_nodes, num_protein_nodes , sender_protein_nodes, receiver_protein_nodes, protein_chopped_edge_list
         del sender_linker_nodes, receiver_linker_nodes, linker_edge_list, sender_fragment_nodes, receiver_fragment_nodes, fragment_edge_list
     del file, file_name #free mem
-torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset/test_4A.pt") #save train
+torch.save(out_list, "/home/piazza/markov_bridges/LP_Data/RestyledReducedDiffusionDataset_5samples/test_4A_5samples.pt") #save train
 del out_list , id_counter , filename_list #free mem
 
 print("Conversion finished.")
