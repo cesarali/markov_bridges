@@ -3,15 +3,84 @@ import numpy as np
 import torch.nn as nn
 from markov_bridges.models.networks.temporal.edmg_lp.graph_gnn_lp import GNN,EGNN
 from markov_bridges.utils.equivariant_diffusion import remove_mean, remove_mean_with_mask
+from dataclasses import fields, asdict
+from dataclasses import  is_dataclass
+from dataclasses import dataclass
+from typing import Dict, Any, ClassVar
+
+import sys
+# Add the directory containing the files to the Python path
+sys.path.append('/home/piazza/DiffusionModel/GitHub_GNN_LP_AM/ContextEncoder')
+from LP_EGNN import Encoder
+from EncoderConfigs import EncoderConfig
+#sys.exit()
+
+def get_encoder_config(device, hidden_layers_shape=None, output_shape=None):
+    """
+    Function to get the correct configuration for the context encoder.
+
+    Parameters:
+    -----------
+    device : str
+        device for all 3 blocks of the encoder (for example: 'cuda:5')
+    hidden_layers_shape : list (optional, default=None)
+        list with hidden layers shape
+    output_shape : int (optional, default=None)
+        number of output neurons; this is also the lenght of the context embedding for each instance (aka. context_node_nf)
+
+    Returns:
+    --------
+    context_encoder_config : config class for context encoder with updated settings
+    """
+    context_encoder_config = EncoderConfig #reference to the class for encoder config with custom settings for context encoder
+    context_encoder_config.mlp_encoder_config.isLinkerSizePred = False #not used for regression on linker size pred
+    context_encoder_config.mlp_encoder_config.isLinkerSizePred_Classifier = False #not used for classification on linker size pred
+    context_encoder_config.mlp_encoder_config.device = device #set device to the passed device in the function for mlp final encoder
+    context_encoder_config.protein_gnn_config.device  = device #set device to the passed device in the function for protein gnn block
+    context_encoder_config.fragment_gnn_config. device = device #set device to the passed device in the function for gragment gnn bock
+    if hidden_layers_shape is not None: #if you specify a custom hydden layers shape
+        context_encoder_config.mlp_encoder_config.hidden_layers_shape = hidden_layers_shape
+    if output_shape is not None: #if you specfy a custom output shape (in this case this is the shape of the embedding!!)
+        context_encoder_config.mlp_encoder_config.out_shape = output_shape
+    return context_encoder_config
+
+"""
+DO NOT DELETE: THIS IS A SNIPPET TO CHECK IF THE get_encoder_config FUNCTION WORKS
+
+test = get_encoder_config(device="cuda:0", hidden_layers_shape=[10,20,10], output_shape=5) #create a custom config
+
+def test_get_encoder_config(conf):
+    ## This function is just to test that the get_encoder_config function works and actually returns a config with the specified settings
+    for class_name, classe in conf.__annotations__.items():
+        print("-"*40)
+        print(class_name) #this is one of the three fields name in the EncoderConfig; classe is instead the class associated to the field
+        print("-"*40)
+        for field_name, field_value in classe.__annotations__.items(): #each of the three class has itself other fields associatd to certain values
+            attribute = getattr(classe, field_name) #get from the class the value associated t the field with name field_name
+            print(field_name," : " , attribute)
+
+test_get_encoder_config(test) #print the new custom config returned by the get_encoder_config function
+
+sys.exit()
+"""
 
 
 class EGNN_dynamics_LP(nn.Module):
-    def __init__(self, in_node_nf, context_node_nf,
+    def __init__(self, in_node_nf, context_node_nf, ##NOTE: whatever value you pass in the init of the class for context_node_nf this will then be overridden with the correct value for LP dataset according to the context encoder
                  n_dims, hidden_nf=64, device='cpu',
                  act_fn=torch.nn.SiLU(), n_layers=4, attention=False,
                  condition_time=True, tanh=False, mode='egnn_dynamics', norm_constant=0,
                  inv_sublayers=2, sin_embedding=False, normalization_factor=100, aggregation_method='sum'):
         super().__init__()
+
+        ## define context encoder configuration and the correct number of context features according to the encoder configuration
+        self.context_encoder_config = get_encoder_config(device, hidden_layers_shape=[256,128,64], output_shape=32) #TODO put a custom number of hidden layers and output shape, those here are just examples
+        context_node_nf = self.context_encoder_config.mlp_encoder_config.out_shape #directly from the config retrieve the context_node_nf (so whatever you pass in the init of the dynamics, internally this is overridden and set to the correct value for LP data)
+        self.context_node_nf = context_node_nf #set correct value also to self.context_node_nf
+
+        #print("normal ", context_node_nf)
+        #print("self ", self.context_node_nf)
+
         self.mode = mode
         if mode == 'egnn_dynamics':
             self.egnn = EGNN(
@@ -29,10 +98,10 @@ class EGNN_dynamics_LP(nn.Module):
                 act_fn=act_fn, n_layers=n_layers, attention=attention,
                 normalization_factor=normalization_factor, aggregation_method=aggregation_method)
 
-        self.context_node_nf = context_node_nf
         self.n_dims = n_dims
         self._edges_dict = {}
         self.condition_time = condition_time 
+         
 
     def forward(self, t, xh, node_mask, edge_mask, context=None):
         raise NotImplementedError
@@ -79,15 +148,17 @@ class EGNN_dynamics_LP(nn.Module):
         return expanded_context_masked #[bs, num linker nodes, num context features] masked, i.e., the context for a node that does not exist is just a tensor full of 0
 
 
-    def _forward(self, t, xh, node_mask, edge_mask, batch):
+    def _forward(self, t, xh, node_mask, edge_mask, batch, dataset_info):
         """
         t : timestep
-        xh : node coordinates and features concatenated
+        xh : node coordinates and features concatenated for a batch of linker atoms
         node mask : node mask
         edge mask : edge mask
-        batch : batch of instances, when calling the _forward it will be set to the batch returned by the dataloader)
+        batch : batch of instances (when calling the _forward it will be set to the batch returned by the dataloader):
+            required because the encoder will take this batch to crate the context embedding
+        dataset_info : dataset info returned by dataloaders and required by the encoder
         """
-        bs, n_nodes, dims = xh.shape
+        bs, n_nodes, dims = xh.shape #n_nodes is in our case the number of linker ndes
         h_dims = dims - self.n_dims
         edges = self.get_adj_matrix(n_nodes, bs, t.device)
         edges = [x.to(t.device) for x in edges]
@@ -110,7 +181,11 @@ class EGNN_dynamics_LP(nn.Module):
                 h_time = h_time.view(bs * n_nodes, 1)
             h = torch.cat([h, h_time], dim=1)
 
-        context = self.prepare_context(batch, model) ##TODO define the model
+        ## define the context encoder, which is the model that takes a batch of instances provided by the dataloader and returns the embedded context for each instance in the batch
+        context_encoder = Encoder(dataset_info, self.context_encoder_config) #define the model instance by passing the dataset info and the configuration settings
+
+        ## using the model and the batch of instances retrieve the context as required by the code flow (context is [bs, num linker node, num context features] and is masked with linker node mask)
+        context = self.prepare_context(batch, context_encoder) #[bs, num linker node, num context features] , already masked
 
         #if context:
         # We're conditioning, awesome!
@@ -174,3 +249,5 @@ class EGNN_dynamics_LP(nn.Module):
         else:
             self._edges_dict[n_nodes] = {}
             return self.get_adj_matrix(n_nodes, batch_size, device)
+
+#istance = EGNN_dynamics_LP(1, 12, 3) #temp to see if context node nf is set to correct value
