@@ -32,7 +32,7 @@ class EGNN_dynamics_LP(nn.Module):
         self.context_node_nf = context_node_nf
         self.n_dims = n_dims
         self._edges_dict = {}
-        self.condition_time = condition_time
+        self.condition_time = condition_time 
 
     def forward(self, t, xh, node_mask, edge_mask, context=None):
         raise NotImplementedError
@@ -44,8 +44,49 @@ class EGNN_dynamics_LP(nn.Module):
 
     def unwrap_forward(self):
         return self._forward
+    
+    def prepare_context(self,batch, model):
+        """
+        Function to prepare the context for conditioning the generative model.
 
-    def _forward(self, t, xh, node_mask, edge_mask, context):
+        Parameters:
+        -----------
+        batch : 
+            a batch of instances given by the LPDataloader 
+        model :
+            the model that creates the embedded representation of the context
+
+        Returns:
+        --------
+        expanded_context_masked : torch.Tensor of shape [batch size, num linker nodes, num context features]
+            a tensor where for each linker node in each instance batch we have the embedded context. 
+            Of course, all the linker nodes of the same instance will share the same context.
+            Additionally, since not all instances in the batch really have the same number of nodes and some nodes are just pad, the context returned will be masked 
+            in such a way that it will be a tensor of all zeros for padded nodes. 
+        """
+        # assuming that the model is defined, the model outputs is [batch size, number of context features]: this is a batch of embedded contextes
+        embedded_contextes_batch = model(batch) #pass the batch to the model and obtain the context embedding for each instance in the batch. embedded_contextes_batch has shape [batch size, output shape]
+        linker_atom_mask = batch["mask_category_linker_gen"] #this is a mask that define, for each instance in the batch, if a linker node exists or it is a pad. it has shape [bs, num linker nodes]. We could have taken also mask_position_linker_gen, it would have been the same
+        bs, num_linker_nodes = linker_atom_mask.shape[0], linker_atom_mask.shape[1] #from the mask tensor retrieve batch size and number of linker nodes inthe batch
+
+        embedded_contextes_batch = embedded_contextes_batch.unsqueeze(1) #Unsqueeze to add a new dimension for linker nodes: Shape is now: [batch_size, 1, context_features]
+        expanded_context = embedded_contextes_batch.repeat(1, num_linker_nodes, 1) #Repeat the context across the num_linker_nodes dimension. Shape is now: [batch_size, num_linker_nodes, context_features]
+
+        # mask the expanded context: not all the linker nodes are real, some of them are pad and we know them thanks to the linker_atom_mask. Using the same mask, mask also the context tensor in such a way that the context associated to pad nodes is a tensor full of 0
+        linker_atom_mask = linker_atom_mask.unsqueeze(-1) #Unsqueeze the mask to make it compatible for broadcasting: not it has shape [batch_size, num_linker_nodes, 1]
+        expanded_context_masked = expanded_context * linker_atom_mask #multiply the context tensor for the mask tensor (context shape: [batch_size, num_linker_nodes, context_features], mask shape: [batch_size, num_linker_nodes, 1])
+
+        return expanded_context_masked #[bs, num linker nodes, num context features] masked, i.e., the context for a node that does not exist is just a tensor full of 0
+
+
+    def _forward(self, t, xh, node_mask, edge_mask, batch):
+        """
+        t : timestep
+        xh : node coordinates and features concatenated
+        node mask : node mask
+        edge mask : edge mask
+        batch : batch of instances, when calling the _forward it will be set to the batch returned by the dataloader)
+        """
         bs, n_nodes, dims = xh.shape
         h_dims = dims - self.n_dims
         edges = self.get_adj_matrix(n_nodes, bs, t.device)
@@ -69,10 +110,12 @@ class EGNN_dynamics_LP(nn.Module):
                 h_time = h_time.view(bs * n_nodes, 1)
             h = torch.cat([h, h_time], dim=1)
 
-        if context is not None:
-            # We're conditioning, awesome!
-            context = context.view(bs*n_nodes, self.context_node_nf)
-            h = torch.cat([h, context], dim=1)
+        context = self.prepare_context(batch, model) ##TODO define the model
+
+        #if context:
+        # We're conditioning, awesome!
+        context = context.view(bs*n_nodes, self.context_node_nf)
+        h = torch.cat([h, context], dim=1)
 
         if self.mode == 'egnn_dynamics':
             h_final, x_final = self.egnn(h, x, edges, node_mask=node_mask, edge_mask=edge_mask)
@@ -86,9 +129,9 @@ class EGNN_dynamics_LP(nn.Module):
         else:
             raise Exception("Wrong mode %s" % self.mode)
 
-        if context is not None:
-            # Slice off context size:
-            h_final = h_final[:, :-self.context_node_nf]
+        #if context:
+        # Slice off context size:
+        h_final = h_final[:, :-self.context_node_nf]
 
         if self.condition_time:
             # Slice off last dimension which represented time.
