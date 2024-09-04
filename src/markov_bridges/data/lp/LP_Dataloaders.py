@@ -98,7 +98,7 @@ class LPDataloader(MarkovBridgeDataloader):
 
             #print(f"[INFO]\nNumber of training instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(train)}\nNumber of validation instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(valid)}\nNumber of test instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(test)}\n")
 
-        if self.dataset_config.downsample: #if you need to apply downsampling to balance the dataset with respect to the number of linke nodes
+        if self.dataset_config.downsample: #if you need to apply downsampling to balance the dataset with respect to the number of linke nodes. by default this s executed
             import random
             ## 1) you need to know how many instances have a certain number of linker nodes in each dataset
             train_count_linker_node, _, _ = self._get_hist_dicts(train) #train_count_linker_node is a dictionary like {5:87, 6:109, 7:334 ..} which means that there are 87 instances with 5 linker nodes, 109 instances with 6 linker nodes and so on
@@ -132,6 +132,8 @@ class LPDataloader(MarkovBridgeDataloader):
         selected_train = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
         selected_valid = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
         selected_test = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
+
+        del train, valid, test #free mem (further references are all to selected_train, selected_valid and selected_test)
 
         ### if padding_dependence = "dataset" pad up to the max vaues in each dataset, create the masks after padding and return the padded datasets
         if self.dataset_config.padding_dependence == "dataset":
@@ -425,6 +427,8 @@ class LPDataloader(MarkovBridgeDataloader):
         info["train"]["count_linker_gen_nodes"], info["train"]["count_fragment_nodes"], info["train"]["count_protein_nodes"] = self._get_hist_dicts(selected_train)
         info["valid"]["count_linker_gen_nodes"], info["valid"]["count_fragment_nodes"], info["valid"]["count_protein_nodes"] = self._get_hist_dicts(selected_valid)
         info["test"]["count_linker_gen_nodes"], info["test"]["count_fragment_nodes"], info["test"]["count_protein_nodes"] = self._get_hist_dicts(selected_test)
+
+        del subsets, selected_train, selected_valid, selected_test #free mem
 
         return info
     
