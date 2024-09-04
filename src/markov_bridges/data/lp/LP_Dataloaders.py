@@ -13,6 +13,28 @@ class LPDataloader(MarkovBridgeDataloader):
         #self.dataset_config = LPConfig() #dataset configuration
         self.dataset_config = config.data
         self.dataset_info = self._get_dataset_info()
+
+    def _get_hist_dicts(self, dataset):
+        """
+        Function to retrieve from a loaded and eventually filtered dataset (train, test or valid) the number of linker nodes, fragment nodes and protein nodes
+
+        Returns:
+        ---------
+        linker_atoms_dict, fragment_atoms_dict, protein_atoms_dict : dicts with the counts of how many instances have that number of linker nodes, fragment nodes and protein nodes.
+        es. linker_atoms_dict = {4: 44, 5: 35, 6:26} means that 44 instances have 4 linker nodes, 35 instances have 5 linker nodes and 26 instances have 6 linker nodes. 
+        """
+        num_linker_nodes, num_fragment_nodes, num_protein_nodes = [], [], [] #initialize 3 empty lists
+        for instance in dataset: #for each instance
+            num_linker_nodes.append(instance["num_linker_gen_nodes"]), num_fragment_nodes.append(instance["num_fragment_nodes"]), num_protein_nodes.append(instance["num_protein_nodes"]) #extract value and apend it to the correct list
+        num_linker_nodes , num_fragment_nodes, num_protein_nodes = torch.tensor(num_linker_nodes), torch.tensor(num_fragment_nodes), torch.tensor(num_protein_nodes) #convert list to torch tensors for counting operation
+        unique_values_linker, count_linker = torch.unique(num_linker_nodes, sorted=True, return_counts=True) #get unique values and their counts for linker
+        unique_values_fragment, count_fragment = torch.unique(num_fragment_nodes, sorted=True, return_counts=True) #get unique values and their count for fragment
+        unique_values_protein, count_protein = torch.unique(num_protein_nodes, sorted=True, return_counts=True) #get unique values and their count for protein
+        linker_atoms_dict = {int(value):int(count) for value, count in zip(unique_values_linker, count_linker)} #create dict for linker
+        fragment_atoms_dict = {int(value):int(count) for value, count in zip(unique_values_fragment, count_fragment)} #create dict for fragment
+        protein_atoms_dict = {int(value):int(count) for value, count in zip(unique_values_protein, count_protein)} #create dict for fragment
+        
+        return linker_atoms_dict, fragment_atoms_dict, protein_atoms_dict
         
 
     def _load_subsets(self): 
@@ -26,6 +48,8 @@ class LPDataloader(MarkovBridgeDataloader):
         If padding_dependence == "dataset" it pads up to the max value in each dataset, create the masks for padding and returns the padded datasets (in this case, no custom collate function will be used in the later call of the dataloader)
 
         Fnally returns a dictionary of 3 lists with the selected instances.
+
+        Update: performs also downsampling
 
         Returns:
         --------
@@ -74,7 +98,37 @@ class LPDataloader(MarkovBridgeDataloader):
 
             #print(f"[INFO]\nNumber of training instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(train)}\nNumber of validation instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(valid)}\nNumber of test instances after max_num_protein_nodes filter at {self.dataset_config.max_num_protein_nodes}: {len(test)}\n")
 
-        ### select the number of instances to take from each filtered dataset
+        if self.dataset_config.downsample: #if you need to apply downsampling to balance the dataset with respect to the number of linke nodes
+            import random
+            ## 1) you need to know how many instances have a certain number of linker nodes in each dataset
+            train_count_linker_node, _, _ = self._get_hist_dicts(train) #train_count_linker_node is a dictionary like {5:87, 6:109, 7:334 ..} which means that there are 87 instances with 5 linker nodes, 109 instances with 6 linker nodes and so on
+            valid_count_linker_node,_, _ = self._get_hist_dicts(valid) #same but for validation dataset
+            test_count_linker_node, _, _ = self._get_hist_dicts(test) #same but for test set
+            ## 2) now find out what is the minimum number of instances belonging to a certain liker size
+            min_value_train = min(train_count_linker_node.values()) #this is the minimum number of instances belonging to a specific class in training set: if train_count_linker_node={5:87, 6:109, 7:334}, then min_value_train=87
+            min_value_valid= min(valid_count_linker_node.values())
+            min_value_test = min(test_count_linker_node.values())
+            ## 3) now for each group of instances in the three datasets you need to sample a min_value number of instances. This means that for example if train_count_linker_node={5:87, 6:109, 7:334} we have 3 groups of instances: the first group is made up of 87 instances and they have 5 linker nodes, the second group is made up of 109 instances and they have 6 linker nodes and so on. From each group we have to keep only 87 instances
+            downsampled_train, downsampled_valid, downsampled_test = [], [], [] #create 3 empty lists where to put downsampled instances for train, valid and test
+            for linker_size in range(self.dataset_config.min_num_linker_nodes, self.dataset_config.max_num_linker_nodes+1): #from each size from 5 to 20 both included
+                random.seed(linker_size) #set seed for sampling reproducibility, but vary seed at each iteration to diversify sampling
+                subset_train = [instance for instance in train if instance["num_linker_gen_nodes"]==linker_size] #from train take all instances with that linker size
+                sampled_train_instances = random.sample(subset_train, min_value_train) #from the subset sample that amount of instances
+                downsampled_train.extend(sampled_train_instances) #store sampled instances in the downsamples_train
+                del subset_train, sampled_train_instances #free mem
+                subset_valid = [instance for instance in valid if instance["num_linker_gen_nodes"]==linker_size] #repeat also for validation set
+                sampled_valid_instances = random.sample(subset_valid, min_value_valid)
+                downsampled_valid.extend(sampled_valid_instances)
+                del subset_valid, sampled_valid_instances  #free mem
+                subset_test = [instance for instance in test if instance["num_linker_gen_nodes"]==linker_size] #repeat also for test
+                sampled_test_instances = random.sample(subset_test, min_value_test)
+                downsampled_test.extend(sampled_test_instances)
+                del subset_test, sampled_test_instances, linker_size #free mem
+            ## 4) set train = downsampled_train (same for the other two) for code integrity
+            train, valid, test = downsampled_train, downsampled_valid, downsampled_test
+            del downsampled_test, downsampled_train, downsampled_valid #free mem
+
+        ### select the number of instances to take from each filtered and eventually downsampled dataset
         selected_train = train if self.dataset_config.num_pts_train == -1 else train[:self.dataset_config.num_pts_train] #select training instances to be returned in batch by the dataloader (all or a certain number specified in num_pts_train)
         selected_valid = valid if self.dataset_config.num_pts_valid == -1 else valid[:self.dataset_config.num_pts_valid] #select validation instances
         selected_test = test if self.dataset_config.num_pts_test == -1 else test[:self.dataset_config.num_pts_test] #select test instances
@@ -349,30 +403,33 @@ class LPDataloader(MarkovBridgeDataloader):
                     first_batch = next(iter(loader))# Get the first batch
                     first_batches[key] = first_batch #put it in the dictionay associating it with the corret dataset name (train, valid or test)
         return list(first_batches["test"].keys()) #batch_keys 
+
     
+    def _get_dataset_info(self):
+        
+        info = {} #dictionary to return which contains information
 
-    def _get_hist_dicts(self, dataset):
-        """
-        Function to retrieve from a loaded and eventually filtered dataset (train, test or valid) the number of linker nodes, fragment nodes and protein nodes
+        ### add to the info dictionary the config value used
+        info["General_Configuration"] = asdict(self.dataset_config)
 
-        Returns:
-        ---------
-        linker_atoms_dict, fragment_atoms_dict, protein_atoms_dict : dicts with the counts of how many instances have that number of linker nodes, fragment nodes and protein nodes.
-        es. linker_atoms_dict = {4: 44, 5: 35, 6:26} means that 44 instances have 4 linker nodes, 35 instances have 5 linker nodes and 26 instances have 6 linker nodes. 
-        """
-        num_linker_nodes, num_fragment_nodes, num_protein_nodes = [], [], [] #initialize 3 empty lists
-        for instance in dataset: #for each instance
-            num_linker_nodes.append(instance["num_linker_gen_nodes"]), num_fragment_nodes.append(instance["num_fragment_nodes"]), num_protein_nodes.append(instance["num_protein_nodes"]) #extract value and apend it to the correct list
-        num_linker_nodes , num_fragment_nodes, num_protein_nodes = torch.tensor(num_linker_nodes), torch.tensor(num_fragment_nodes), torch.tensor(num_protein_nodes) #convert list to torch tensors for counting operation
-        unique_values_linker, count_linker = torch.unique(num_linker_nodes, sorted=True, return_counts=True) #get unique values and their counts for linker
-        unique_values_fragment, count_fragment = torch.unique(num_fragment_nodes, sorted=True, return_counts=True) #get unique values and their count for fragment
-        unique_values_protein, count_protein = torch.unique(num_protein_nodes, sorted=True, return_counts=True) #get unique values and their count for protein
-        linker_atoms_dict = {int(value):int(count) for value, count in zip(unique_values_linker, count_linker)} #create dict for linker
-        fragment_atoms_dict = {int(value):int(count) for value, count in zip(unique_values_fragment, count_fragment)} #create dict for fragment
-        protein_atoms_dict = {int(value):int(count) for value, count in zip(unique_values_protein, count_protein)} #create dict for fragment
-        return linker_atoms_dict, fragment_atoms_dict, protein_atoms_dict
+        ### call the function _load_subsets to obtain the filtered and selected instances from each subset
+        subsets = self._load_subsets()
+        selected_train, selected_valid, selected_test = subsets["train"], subsets["valid"], subsets["test"] #get filtered and eventually downsampled dataser returned by the _load_subsets function
 
+        info["train"], info["valid"], info["test"] = {}, {}, {} #initialize 3 dictioanaries, one for each dataset
 
+        ### number of instances in each dataset after filtering and num_pts selection
+        info["train"]["number_of_instances"], info["valid"]["number_of_instances"], info["test"]["number_of_instances"] = len(selected_train), len(selected_valid), len(selected_test)
+
+        ### histogram values for number of linker_gen_nodes in each dataset
+        info["train"]["count_linker_gen_nodes"], info["train"]["count_fragment_nodes"], info["train"]["count_protein_nodes"] = self._get_hist_dicts(selected_train)
+        info["valid"]["count_linker_gen_nodes"], info["valid"]["count_fragment_nodes"], info["valid"]["count_protein_nodes"] = self._get_hist_dicts(selected_valid)
+        info["test"]["count_linker_gen_nodes"], info["test"]["count_fragment_nodes"], info["test"]["count_protein_nodes"] = self._get_hist_dicts(selected_test)
+
+        return info
+    
+    
+    """
     def _get_dataset_info(self):
 
         info = {} #dictionary to return which contains inforation
@@ -426,5 +483,6 @@ class LPDataloader(MarkovBridgeDataloader):
         info["valid"]["count_linker_gen_nodes"], info["valid"]["count_fragment_nodes"], info["valid"]["count_protein_nodes"] = self._get_hist_dicts(selected_valid)
         info["test"]["count_linker_gen_nodes"], info["test"]["count_fragment_nodes"], info["test"]["count_protein_nodes"] = self._get_hist_dicts(selected_test)
 
-        return info
 
+        return info
+        """

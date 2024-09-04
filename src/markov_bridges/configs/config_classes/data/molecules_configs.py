@@ -55,6 +55,9 @@ class LPConfig:
     accept_variable_bs : bool = False #STRONGLY RECOMMENDED:False. if true, the filter that discard instances where protein has more than max_num_protein_nodes nodes is done in the collate funciton (which can result in batches with different number of samples and possibly empty batches). If false, the filtering is done before so that the dataloader receives allready filtered instances
     ## NOTE: with the new update that includes to filter applying min/max values to all the 3 categories (protein, fragment, linker), accept_variable_bs MUST be False, if True it will raise NotImplementedError.
 
+    ## whether to balance linker sizes with a downsampling approach
+    downsample : bool = True
+
     padding_dependence : Literal["batch", "dataset"] = "batch" #RECOMMENDED: "batch". if "batch", the padding and the corresponding masks are created by the collate function of the dataloader, which means that everything is padded to the max number in the batch (in this way, different batches can have different shapes). If "dataset", the padding is performed with respect to the max number in the entire dataset (train, or valid or test), which means that each batch in each dataset has the same shape, buth the batch in the train has different shape from the batch in the test or valiation. 
 
     # !!! Is recommended to NOT put padding_dependence="dataset" & accept_variable_bs=True : too memory demanding
