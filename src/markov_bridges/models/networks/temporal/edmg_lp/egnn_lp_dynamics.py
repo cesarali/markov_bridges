@@ -181,6 +181,8 @@ class EGNN_dynamics_LP(nn.Module):
                 h_time = h_time.view(bs * n_nodes, 1)
             h = torch.cat([h, h_time], dim=1)
 
+    
+        # TODO: evaluate if is better to create the model instance inside the forward or pass the model to the forward (I think the 2nd)
         ## define the context encoder, which is the model that takes a batch of instances provided by the dataloader and returns the embedded context for each instance in the batch
         context_encoder = Encoder(dataset_info, self.context_encoder_config) #define the model instance by passing the dataset info and the configuration settings
 
