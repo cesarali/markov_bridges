@@ -73,6 +73,6 @@ if __name__=="__main__":
                                        experiment_type="graph",
                                        experiment_indentifier="lightning_test9",
                                        delete=True)
-    test_loss(config)
+    test_forward_pass(config)
 
     
